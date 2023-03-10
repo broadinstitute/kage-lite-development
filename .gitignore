@@ -1,0 +1,10 @@
+.idea/
+dist/
+*.egg-info/
+*.shm
+*.npz
+*.npy
+*.deb
+*.fa
+__pycache__
+

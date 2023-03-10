@@ -1,0 +1,15 @@
+[submodule "graph_kmer_index"]
+	path = graph_kmer_index
+	url = ./graph_kmer_index
+[submodule "kage"]
+	path = kage
+	url = ./kage
+[submodule "kage-indexing"]
+	path = kage-indexing
+	url = ./kage-indexing/
+[submodule "obgraph"]
+	path = obgraph
+	url = ./obgraph/
+[submodule "shared_memory_wrapper"]
+	path = shared_memory_wrapper
+	url = ./shared_memory_wrapper/
