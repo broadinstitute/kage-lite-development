@@ -1,0 +1,9 @@
+{
+  "KAGEPanel.input_vcf_gz": "resources/20200825_pav-all-samples-freeze3-final.bi.chr1-1Mbp-chr2-1Mbp.LOO.AF.vcf.gz",
+  "KAGEPanel.input_vcf_gz_tbi": "resources/20200825_pav-all-samples-freeze3-final.bi.chr1-1Mbp-chr2-1Mbp.LOO.AF.vcf.gz.tbi",
+  "KAGEPanel.reference_fasta": "resources/GRCh38_full_analysis_set_plus_decoy_hla.chr1-1Mbp-chr2-1Mbp.fa",
+  "KAGEPanel.reference_fasta_fai": "resources/GRCh38_full_analysis_set_plus_decoy_hla.chr1-1Mbp-chr2-1Mbp.fa.fai",
+  "KAGEPanel.output_prefix": "test",
+  "KAGEPanel.chromosomes": ["chr1", "chr2"]
+}
+
