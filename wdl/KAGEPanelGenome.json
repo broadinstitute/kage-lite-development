@@ -1,4 +1,5 @@
 {
+  "KAGEPanel.docker": "kage-lite/kage-lite",
   "KAGEPanel.input_vcf_gz": "resources/20200825_pav-all-samples-freeze3-final.AF.join.bi.LOO.vcf.gz",
   "KAGEPanel.input_vcf_gz_tbi": "resources/20200825_pav-all-samples-freeze3-final.AF.join.bi.LOO.vcf.gz.tbi",
   "KAGEPanel.reference_fasta": "resources/GRCh38_full_analysis_set_plus_decoy_hla.fa",

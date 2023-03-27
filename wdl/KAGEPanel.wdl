@@ -20,7 +20,7 @@ workflow KAGEPanel {
         String output_prefix
         Array[String] chromosomes
 
-        String? docker
+        String docker
 
         RuntimeAttributes? runtime_attributes
     }
@@ -258,7 +258,7 @@ task MakeSitesOnlyVcfAndNumpyVariants {
         File input_vcf_gz_tbi
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -276,7 +276,7 @@ task MakeSitesOnlyVcfAndNumpyVariants {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -299,7 +299,7 @@ task MakeChromosomeGenotypeMatrix {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -314,7 +314,7 @@ task MakeChromosomeGenotypeMatrix {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -336,7 +336,7 @@ task MakeChromosomeGraph {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -361,7 +361,7 @@ task MakeChromosomeGraph {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -381,7 +381,7 @@ task MergeChromosomeGraphs {
         Array[File] chromosome_graphs
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -399,7 +399,7 @@ task MergeChromosomeGraphs {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -422,7 +422,7 @@ task MakeChromosomeVariantToNodes {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -444,7 +444,7 @@ task MakeChromosomeVariantToNodes {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -464,7 +464,7 @@ task MakeHelperModel {
         File variant_to_nodes
         String output_prefix
 
-        String? docker
+        String docker
         Int? num_threads = 2 # single thread has bug
         Int? window_size = 100
 
@@ -487,7 +487,7 @@ task MakeHelperModel {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -508,7 +508,7 @@ task SampleChromosomeKmersFromLinearReference {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
         Int? num_threads = 1
         Int? spacing = 1
         Int? kmer_length = 31
@@ -541,7 +541,7 @@ task SampleChromosomeKmersFromLinearReference {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -560,7 +560,7 @@ task MakeLinearReferenceKmerCounter {
         File linear_kmers
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -575,7 +575,7 @@ task MakeLinearReferenceKmerCounter {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -600,7 +600,7 @@ task GetChromosomeShortVariantKmers {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
         Int? num_threads = 1
         Int? kmer_length = 31
         Int? chunk_size = 20000
@@ -634,7 +634,7 @@ task GetChromosomeShortVariantKmers {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -656,7 +656,7 @@ task SampleChromosomeStructuralVariantKmers {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
         Int? kmer_length = 31
 
         RuntimeAttributes runtime_attributes = {}
@@ -674,7 +674,7 @@ task SampleChromosomeStructuralVariantKmers {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -695,7 +695,7 @@ task MakeChromosomeHaplotypeToNodes {
         String chromosome
         String output_prefix
 
-        String? docker
+        String docker
         Int? kmer_length = 31
 
         RuntimeAttributes runtime_attributes = {}
@@ -712,7 +712,7 @@ task MakeChromosomeHaplotypeToNodes {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -732,7 +732,7 @@ task MergeFlatKmers {
         Array[File] flat_kmers
         String output_prefix
 
-        String? docker
+        String docker
         File? num_nodes
         File? reference_fasta_fai
 
@@ -750,7 +750,7 @@ task MergeFlatKmers {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -769,7 +769,7 @@ task MergeChromosomeVariantToNodes {
         Array[File] chromosome_variant_to_nodes
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -783,7 +783,7 @@ task MergeChromosomeVariantToNodes {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -805,7 +805,7 @@ task MergeChromosomeHaplotypeToNodes {
         File num_nodes
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -820,7 +820,7 @@ task MergeChromosomeHaplotypeToNodes {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -840,7 +840,7 @@ task MakeReverseVariantKmerIndex {
         File variant_kmers
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -854,7 +854,7 @@ task MakeReverseVariantKmerIndex {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -873,7 +873,7 @@ task MakeVariantKmerIndexWithReverseComplements {
         File variant_kmers
         String output_prefix
 
-        String? docker
+        String docker
         Int? kmer_length = 31
         Int? hash_modulo = 200000033
 
@@ -893,7 +893,7 @@ task MakeVariantKmerIndexWithReverseComplements {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -915,7 +915,7 @@ task MakeCountModel {
         File kmer_index_only_variants_with_revcomp
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -931,7 +931,7 @@ task MakeCountModel {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -951,7 +951,7 @@ task RefineCountModel {
         File sampling_count_model
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -966,7 +966,7 @@ task RefineCountModel {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -987,7 +987,7 @@ task FindTrickyVariants {
         File reverse_variant_kmers
         String output_prefix
 
-        String? docker
+        String docker
         Int? max_counts = 1000
 
         RuntimeAttributes runtime_attributes = {}
@@ -1005,7 +1005,7 @@ task FindTrickyVariants {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
@@ -1030,7 +1030,7 @@ task MakeIndexBundle {
         File kmer_index_only_variants_with_revcomp
         String output_prefix
 
-        String? docker
+        String docker
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -1050,7 +1050,7 @@ task MakeIndexBundle {
     }
 
     runtime {
-        # docker: docker
+        docker: docker
         cpu: select_first([runtime_attributes.cpu, 1])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"

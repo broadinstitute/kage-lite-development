@@ -6,7 +6,9 @@ WORKDIR /kage-lite
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-    build-essential && \
+    build-essential \
+    samtools \
+    tabix && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
