@@ -8,7 +8,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
     samtools \
-    tabix && \
+    tabix \
+    bcftools && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
