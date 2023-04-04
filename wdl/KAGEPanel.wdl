@@ -294,8 +294,11 @@ task MakeSitesOnlyVcfAndNumpyVariants {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         # need to retain GT header lines
         bcftools view ~{input_vcf_gz} -r ~{sep="," chromosomes} | cut -f 1-9 - | bgzip > ~{output_prefix}.sites.vcf.gz
@@ -320,7 +323,7 @@ task MakeSitesOnlyVcfAndNumpyVariants {
         File sites_only_vcf_gz = "~{output_prefix}.sites.vcf.gz"
         File sites_only_vcf_gz_tbi = "~{output_prefix}.sites.vcf.gz.tbi"
         File numpy_variants = "~{output_prefix}.numpy_variants.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
     
@@ -340,8 +343,11 @@ task MakeChromosomeGenotypeMatrix {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         lite_utils make_genotype_matrix \
             -v ~{input_vcf_gz} \
@@ -361,7 +367,7 @@ task MakeChromosomeGenotypeMatrix {
 
     output {
         File chromosome_genotype_matrix = "~{output_prefix}.~{chromosome}.genotype_matrix.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -382,8 +388,11 @@ task MakeChromosomeGraph {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         obgraph make \
             -r ~{reference_fasta} \
@@ -414,7 +423,7 @@ task MakeChromosomeGraph {
     output {
         File chromosome_graph = "~{output_prefix}.~{chromosome}.obgraph.pkl"
         File chromosome_position_id_index = "~{output_prefix}.~{chromosome}.position_id_index.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -432,8 +441,11 @@ task MergeChromosomeGraphs {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         obgraph merge_graphs \
             -g ~{sep=" " chromosome_graphs} \
@@ -457,7 +469,7 @@ task MergeChromosomeGraphs {
     output {
         File graph = "~{output_prefix}.obgraph.pkl"
         File position_id_index = "~{output_prefix}.position_id_index.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -478,8 +490,11 @@ task MakeChromosomeVariantToNodes {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         bcftools view \
             -Oz \
@@ -506,7 +521,7 @@ task MakeChromosomeVariantToNodes {
 
     output {
         File chromosome_variant_to_nodes = "~{output_prefix}.~{chromosome}.variant_to_nodes.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -527,8 +542,11 @@ task MakeHelperModel {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         lite_utils merge_genotype_matrices \
             -g ~{sep=" " chromosome_genotype_matrices} \
@@ -555,7 +573,7 @@ task MakeHelperModel {
     output {
         File helper_model = "~{output_prefix}.helper_model.pkl"
         File helper_model_combo_matrix = "~{output_prefix}.helper_model_combo_matrix.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -567,7 +585,6 @@ task SampleChromosomeKmersFromLinearReference {
 
         String docker
         File? monitoring_script
-        Int? num_threads = 8
         Int? spacing = 1
         Int? kmer_length = 31
         Boolean? include_reverse_complement = true
@@ -578,8 +595,11 @@ task SampleChromosomeKmersFromLinearReference {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         # subset reference to chromosome
         samtools faidx ~{reference_fasta} \
@@ -590,8 +610,10 @@ task SampleChromosomeKmersFromLinearReference {
         # get chromosome length from fasta index
         CHROMOSOME_LENGTH=$(cut -f 2 chromosome.fa.fai)
 
+        NUM_THREADS=$(nproc)
+
         graph_kmer_index make \
-            -t ~{num_threads} \
+            -t $NUM_THREADS \
             -s ~{spacing} \
             -k ~{kmer_length} \
             --include-reverse-complement ~{include_reverse_complement} \
@@ -613,7 +635,7 @@ task SampleChromosomeKmersFromLinearReference {
 
     output {
         File chromosome_linear_kmers = "~{output_prefix}.~{chromosome}.linear_kmers.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -631,8 +653,11 @@ task MakeLinearReferenceKmerCounter {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         graph_kmer_index count_kmers \
              --subsample-ratio 1 \
@@ -652,7 +677,7 @@ task MakeLinearReferenceKmerCounter {
 
     output {
         File linear_kmers_counter = "~{output_prefix}.linear_kmers_counter.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -669,7 +694,6 @@ task GetChromosomeShortVariantKmers {
 
         String docker
         File? monitoring_script
-        Int? num_threads = 8
         Int? kmer_length = 31
         Int? chunk_size = 20000
         Int? max_variant_nodes = 3
@@ -680,8 +704,11 @@ task GetChromosomeShortVariantKmers {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         bcftools view \
             -Oz \
@@ -690,9 +717,11 @@ task GetChromosomeShortVariantKmers {
             -o ~{chromosome}.sites.vcf.gz
         bcftools index -t ~{chromosome}.sites.vcf.gz
 
+        NUM_THREADS=$(nproc)
+
         graph_kmer_index make_unique_variant_kmers \
             -D true \
-            -t ~{num_threads} \
+            -t $NUM_THREADS \
             -k ~{kmer_length} \
             -c ~{chunk_size} \
             --max-variant-nodes ~{max_variant_nodes} \
@@ -716,7 +745,7 @@ task GetChromosomeShortVariantKmers {
 
     output {
         File chromosome_short_variant_kmers = "~{output_prefix}.~{chromosome}.short_variant_kmers.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -738,8 +767,11 @@ task SampleChromosomeStructuralVariantKmers {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         graph_kmer_index sample_kmers_from_structural_variants \
             -k ~{kmer_length} \
@@ -761,7 +793,7 @@ task SampleChromosomeStructuralVariantKmers {
 
     output {
         File chromosome_structural_variant_kmers = "~{output_prefix}.~{chromosome}.structural_variant_kmers.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -782,8 +814,11 @@ task MakeChromosomeHaplotypeToNodes {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         obgraph make_haplotype_to_nodes_bnp \
             -d true \
@@ -805,7 +840,7 @@ task MakeChromosomeHaplotypeToNodes {
     output {
         File chromosome_haplotype_to_nodes = "~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl"
         File chromosome_haplotype_nodes = "~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl.haplotype_nodes"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -825,8 +860,11 @@ task MergeFlatKmers {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         lite_utils merge_flat_kmers \
             --flat-kmers ~{sep=" " flat_kmers} \
@@ -847,7 +885,7 @@ task MergeFlatKmers {
 
     output {
         File merged_kmers = "~{output_prefix}.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -865,8 +903,11 @@ task MergeChromosomeVariantToNodes {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         lite_utils merge_chromosome_variant_to_nodes \
             --variant-to-nodes ~{sep=" " chromosome_variant_to_nodes} \
@@ -886,7 +927,7 @@ task MergeChromosomeVariantToNodes {
     output {
         File variant_to_nodes = "~{output_prefix}.variant_to_nodes.pkl"
         File num_nodes = "~{output_prefix}.num_nodes.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -906,8 +947,11 @@ task MergeChromosomeHaplotypeToNodes {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         lite_utils merge_chromosome_haplotype_to_nodes \
             --haplotype-to-nodes ~{sep=" " chromosome_haplotype_to_nodes} \
@@ -928,7 +972,7 @@ task MergeChromosomeHaplotypeToNodes {
     output {
         File haplotype_to_nodes = "~{output_prefix}.haplotype_to_nodes.pkl"
         File haplotype_nodes = "~{output_prefix}.haplotype_to_nodes.pkl.haplotype_nodes"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -946,8 +990,11 @@ task MakeReverseVariantKmerIndex {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         graph_kmer_index make_reverse \
             -f ~{variant_kmers} \
@@ -966,7 +1013,7 @@ task MakeReverseVariantKmerIndex {
 
     output {
         File reverse_variant_kmers = "~{output_prefix}.reverse_variant_kmers.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -986,8 +1033,11 @@ task MakeVariantKmerIndexWithReverseComplements {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         graph_kmer_index make_from_flat \
             -f ~{variant_kmers} \
@@ -1010,7 +1060,7 @@ task MakeVariantKmerIndexWithReverseComplements {
 
     output {
         File kmer_index_only_variants_with_revcomp = "~{output_prefix}.kmer_index_only_variants_with_revcomp.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -1031,8 +1081,11 @@ task MakeCountModel {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         kage sample_node_counts_from_population \
             -g ~{graph} \
@@ -1053,7 +1106,7 @@ task MakeCountModel {
 
     output {
         File sampling_count_model = "~{output_prefix}.sampling_count_model.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -1072,8 +1125,11 @@ task RefineCountModel {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         kage refine_sampling_model \
             -s ~{sampling_count_model} \
@@ -1093,7 +1149,7 @@ task RefineCountModel {
 
     output {
         File refined_sampling_count_model = "~{output_prefix}.refined_sampling_count_model.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -1114,8 +1170,11 @@ task FindTrickyVariants {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         kage find_tricky_variants \
             -m ~{sampling_count_model} \
@@ -1137,7 +1196,7 @@ task FindTrickyVariants {
 
     output {
         File tricky_variants = "~{output_prefix}.tricky_variants.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -1161,8 +1220,11 @@ task MakeIndexBundle {
     command {
         set -e
 
-        if [ -e ~{monitoring_script} ]; then
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
             bash ~{monitoring_script} > monitoring.log &
+        fi
 
         kage make_index_bundle \
             -g ~{variant_to_nodes} \
@@ -1187,6 +1249,6 @@ task MakeIndexBundle {
 
     output {
         File index = "~{output_prefix}.index.pkl"
-        File? monitoring_log = "monitoring.log"
+        File monitoring_log = "monitoring.log"
     }
 }

@@ -74,7 +74,7 @@ def run_argument_parser(args):
 
         ref_nodes = []
         var_nodes = []
-        num_nodes = [0]
+        num_nodes = []
         for i, chromosome_variant_to_nodes_file in enumerate(args.variant_to_nodes):
             chromosome_variant_to_nodes = VariantToNodes.from_file(chromosome_variant_to_nodes_file)
 
@@ -82,8 +82,8 @@ def run_argument_parser(args):
             chromosome_var_nodes = chromosome_variant_to_nodes.var_nodes
             chromosome_num_nodes = np.max([chromosome_ref_nodes, chromosome_var_nodes]) + 1
 
-            ref_nodes.append(chromosome_ref_nodes + num_nodes[i])
-            var_nodes.append(chromosome_var_nodes + num_nodes[i])
+            ref_nodes.append(chromosome_ref_nodes + int(np.sum(num_nodes[:i])))
+            var_nodes.append(chromosome_var_nodes + int(np.sum(num_nodes[:i])))
             num_nodes.append(chromosome_num_nodes)
 
         ref_nodes = np.concatenate(ref_nodes)
@@ -91,7 +91,7 @@ def run_argument_parser(args):
 
         variant_to_nodes = VariantToNodes(ref_nodes, var_nodes)
         variant_to_nodes.to_file(args.output_prefix + '.variant_to_nodes.pkl')
-        to_file(num_nodes[1:], args.output_prefix + '.num_nodes.pkl')
+        to_file(num_nodes, args.output_prefix + '.num_nodes.pkl')
 
     subparser = subparsers.add_parser("merge_chromosome_variant_to_nodes")
     subparser.add_argument("--variant-to-nodes", nargs='+', required=True)
@@ -152,7 +152,7 @@ def run_argument_parser(args):
         for i, flat_kmers_file in enumerate(args.flat_kmers):
             flat_kmers = from_file(flat_kmers_file)
             hashes.extend(flat_kmers._hashes)
-            chromosome_start_node = np.sum(num_nodes[:i]) if num_nodes is not None else 0
+            chromosome_start_node = int(np.sum(num_nodes[:i])) if num_nodes is not None else 0
             nodes.extend(flat_kmers._nodes + chromosome_start_node)
             if flat_kmers._ref_offsets is not None:
                 chromosome_ref_offset = np.sum(chromosome_lengths[:i]) if chromosome_lengths is not None else 0
