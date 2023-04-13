@@ -1,15 +1,15 @@
 [submodule "graph_kmer_index"]
 	path = graph_kmer_index
-	url = ./graph_kmer_index
+	url = ../../samuelklee/graph_kmer_index.git
 [submodule "kage"]
 	path = kage
-	url = ./kage
+	url = ../../samuelklee/kage.git
 [submodule "kage-indexing"]
 	path = kage-indexing
-	url = ./kage-indexing/
+	url = ../../samuelklee/kage-indexing.git
 [submodule "obgraph"]
 	path = obgraph
-	url = ./obgraph/
+	url = ../../samuelklee/obgraph.git
 [submodule "shared_memory_wrapper"]
 	path = shared_memory_wrapper
-	url = ./shared_memory_wrapper/
+	url = ../../samuelklee/shared_memory_wrapper.git
