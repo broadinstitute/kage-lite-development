@@ -1,0 +1,11 @@
+{
+  "PanGenieCase.chromosomes": ["chr1", "chr2", "chr3", "chr4", "chr5"],
+  "PanGenieCase.reference_fasta": "resources/GRCh38_full_analysis_set_plus_decoy_hla.fa",
+  "PanGenieCase.output_prefix": "HG00731.PG.chr1-chr5",
+  "PanGenieCase.input_fasta": "/home/slee/working/lrma/sr-imputation/resources/chr1-chr5/HG00731.final.chr1-chr5.noN.fasta",
+  "PanGenieCase.sample_name": "HG00731",
+  "PanGenieCase.panel_vcf_gz": "/home/slee/working/lrma/sr-imputation/resources/chr1-chr5/20200825_pav-all-samples-freeze3-final.LOO.chr1-chr5.AF.join.bi.vcf.gz",
+  "PanGenieCase.panel_vcf_gz_tbi": "/home/slee/working/lrma/sr-imputation/resources/chr1-chr5/20200825_pav-all-samples-freeze3-final.LOO.chr1-chr5.AF.join.bi.vcf.gz.tbi",
+  "PanGenieCase.docker": "us.gcr.io/broad-dsde-methods/slee/pangenie"
+}
+
