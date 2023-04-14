@@ -301,7 +301,7 @@ task MakeSitesOnlyVcfAndNumpyVariants {
         fi
 
         # need to retain GT header lines
-        bcftools view ~{input_vcf_gz} -r ~{sep="," chromosomes} | cut -f 1-9 - | bgzip > ~{output_prefix}.sites.vcf.gz
+        bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} | cut -f 1-9 - | bgzip > ~{output_prefix}.sites.vcf.gz
         bcftools index -t ~{output_prefix}.sites.vcf.gz
 
         obgraph make_numpy_variants \
