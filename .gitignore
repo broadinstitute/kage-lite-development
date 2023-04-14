@@ -7,10 +7,7 @@ dist/
 *.deb
 *.fa
 __pycache__
-wdl/cromwell-51.jar
+wdl/cromwell-*.jar
 wdl/cromwell-executions
-wdl/womtool-51.jar
-wdl/local.conf
+wdl/womtool-*.jar
 wdl/cromwell-workflow-logs
-wdl/resources
-
