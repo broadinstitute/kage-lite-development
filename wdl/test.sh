@@ -7,7 +7,7 @@ DOCKER=$3
 mkdir -p $2
 
 # run panel WDL
-java -Dconfig.file=local.conf -jar $CROMWELL_JAR run KAGEPanel.wdl -i <(sed -e 's/__DOCKER__/$DOCKER/g' KAGEPanel-chr1-1Mbp-chr2-1Mbp.json) -m $OUTPUT_DIR/metadata.json
+java -Dconfig.file=local.conf -jar $CROMWELL_JAR run KAGEPanel.wdl -i <(sed -e "s|__DOCKER__|$DOCKER|g" KAGEPanel-chr1-1Mbp-chr2-1Mbp.json) -m $OUTPUT_DIR/metadata.json
 
 INDEX=$(jq -r '.outputs."KAGEPanel.index"' $OUTPUT_DIR/metadata.json)
 KMER_INDEX=$(jq -r '.outputs."KAGEPanel.kmer_index_only_variants_with_revcomp"' $OUTPUT_DIR/metadata.json)
