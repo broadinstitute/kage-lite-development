@@ -2,11 +2,12 @@
 
 CROMWELL_JAR=$1
 OUTPUT_DIR=$2
+DOCKER=$3
 
 mkdir -p $2
 
-# run panel WDL (uses kage-lite/kage-lite Docker)
-java -Dconfig.file=local.conf -jar $CROMWELL_JAR run KAGEPanel.wdl -i KAGEPanel-chr1-1Mbp-chr2-1Mbp.json -m $OUTPUT_DIR/metadata.json
+# run panel WDL
+java -Dconfig.file=local.conf -jar $CROMWELL_JAR run KAGEPanel.wdl -i <(sed -e 's/__DOCKER__/$DOCKER/g' KAGEPanel-chr1-1Mbp-chr2-1Mbp.json) -m $OUTPUT_DIR/metadata.json
 
 INDEX=$(jq -r '.outputs."KAGEPanel.index"' $OUTPUT_DIR/metadata.json)
 KMER_INDEX=$(jq -r '.outputs."KAGEPanel.kmer_index_only_variants_with_revcomp"' $OUTPUT_DIR/metadata.json)
@@ -14,13 +15,13 @@ cp $INDEX $OUTPUT_DIR
 cp $KMER_INDEX $OUTPUT_DIR
 
 # run kmer mapping and genotyping (w/o helper model)
-docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test -v $(readlink -m resources):/kage-lite/resources kage-lite/kage-lite \
+docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test -v $(readlink -m resources):/kage-lite/resources $DOCKER \
   kmer_mapper map -d True -c 100000000 \
                   -i /kage-lite/test/$(basename $KMER_INDEX) \
                   -f /kage-lite/resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.fasta \
                   -o /kage-lite/test/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.kmer_counts.npy
 
-docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test kage-lite/kage-lite \
+docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
   kage genotype -s HG00731 \
                 -I true \
                 --average-coverage 30 \
