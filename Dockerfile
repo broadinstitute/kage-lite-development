@@ -14,6 +14,6 @@ RUN apt-get update && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
 
-RUN pip install -e shared_memory_wrapper/ -e obgraph/ -e graph_kmer_index/ -e kage/ -e lite_utils/
+RUN pip install -e shared_memory_wrapper/ -e obgraph/ -e graph_kmer_index/ -e kmer_mapper/ -e kage/ -e lite_utils/
 
 CMD ["bash"]
