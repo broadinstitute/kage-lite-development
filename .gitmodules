@@ -4,9 +4,6 @@
 [submodule "kage"]
 	path = kage
 	url = ../../samuelklee/kage.git
-[submodule "kage-indexing"]
-	path = kage-indexing
-	url = ../../samuelklee/kage-indexing.git
 [submodule "kmer_mapper"]
 	path = kmer_mapper
 	url = ../../samuelklee/kmer_mapper.git
