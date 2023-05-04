@@ -9,7 +9,8 @@ RUN apt-get update && \
     build-essential \
     samtools \
     tabix \
-    bcftools && \
+    bcftools &&  \
+    zlib1g && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
