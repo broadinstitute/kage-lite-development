@@ -444,6 +444,7 @@ task CalculateMetrics {
                  --label ~{label} \
                  --sample_name ~{sample_name} \
                  <<-'EOF'
+        import argparse
         import allel
         import pandas as pd
         import sklearn.metrics
