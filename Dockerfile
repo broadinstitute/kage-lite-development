@@ -10,7 +10,7 @@ RUN apt-get update && \
     samtools \
     tabix \
     bcftools \
-    zlib1g && \
+    zlib1g-dev && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove

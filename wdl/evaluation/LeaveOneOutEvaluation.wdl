@@ -20,6 +20,9 @@ workflow LeaveOneOutEvaluation {
         File input_vcf_gz_tbi
         File reference_fasta
         File reference_fasta_fai
+        File repeat_mask_bed
+        File segmental_duplications_bed
+        File simple_repeats_bed
         String output_prefix
         Array[String] chromosomes
         Array[String] leave_one_out_sample_names
@@ -43,6 +46,9 @@ workflow LeaveOneOutEvaluation {
         input:
             input_vcf_gz = input_vcf_gz,
             input_vcf_gz_tbi = input_vcf_gz_tbi,
+            repeat_mask_bed = repeat_mask_bed,
+            segmental_duplications_bed = segmental_duplications_bed,
+            simple_repeats_bed = simple_repeats_bed,
             chromosomes = chromosomes,
             output_prefix = output_prefix,
             docker = docker,
@@ -170,6 +176,9 @@ task PreprocessPanelVCF {
     input {
         File input_vcf_gz
         File input_vcf_gz_tbi
+        File repeat_mask_bed
+        File segmental_duplications_bed
+        File simple_repeats_bed
         Array[String] chromosomes
         String output_prefix
 
@@ -191,7 +200,13 @@ task PreprocessPanelVCF {
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} | \
             bcftools norm --no-version -m+ | \
             bcftools view --no-version --max-alleles 2 |
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz -- -t AF
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.subset.vcf.gz -- -t AF
+
+        truvari anno svinfo -o ~{output_prefix}.subset.svinfo.vcf.gz ~{output_prefix}.subset.vcf.gz
+
+        bcftools annotate -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Oz -o ~{output_prefix}.subset.svinfo.RM.vcf.gz ~{output_prefix}.subset.svinfo.vcf.gz
+        bcftools annotate -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Oz -o ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz ~{output_prefix}.subset.svinfo.RM.vcf.gz
+        bcftools annotate -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
     }
 
