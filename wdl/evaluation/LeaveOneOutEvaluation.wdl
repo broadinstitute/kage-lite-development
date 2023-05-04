@@ -86,59 +86,59 @@ workflow LeaveOneOutEvaluation {
                 runtime_attributes = runtime_attributes
         }
 
-#        call KAGEPanel.KAGEPanel as KAGELeaveOneOutPanel {
-#            input:
-#                input_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
-#                input_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
-#                reference_fasta = reference_fasta,
-#                reference_fasta_fai = reference_fasta_fai,
-#                output_prefix = leave_one_out_output_prefix,
-#                chromosomes = chromosomes,
-#                docker = kage_docker,
-#                monitoring_script = monitoring_script
-#        }
-#
-#        # KAGE+GLIMPSE case
-#        call KAGEPlusGLIMPSECase {
-#            input:
-#                input_fasta = PreprocessCaseReads.preprocessed_fasta,
-#                panel_index = KAGELeaveOneOutPanel.index,
-#                panel_kmer_index_only_variants_with_revcomp = KAGELeaveOneOutPanel.kmer_index_only_variants_with_revcomp,
-#                glimpse_panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
-#                glimpse_panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
-#                reference_fasta_fai = reference_fasta_fai,
-#                chromosomes = chromosomes,
-#                output_prefix = leave_one_out_sample_name,
-#                sample_name = leave_one_out_sample_name,
-#                docker = kage_docker,
-#                monitoring_script = monitoring_script
-#        }
-#
-#        # KAGE evaluation
-#        call CalculateMetrics as CalculateMetricsKAGE {
-#            input:
-#                case_vcf_gz = KAGEPlusGLIMPSECase.kage_vcf_gz,
-#                case_vcf_gz_tbi = KAGEPlusGLIMPSECase.kage_vcf_gz_tbi,
-#                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
-#                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
-#                label = "KAGE",
-#                sample_name = leave_one_out_sample_name,
-#                docker = docker,
-#                monitoring_script = monitoring_script,
-#        }
-#
-#        # KAGE+GLIMPSE evaluation
-#        call CalculateMetrics as CalculateMetricsKAGEPlusGLIMPSE {
-#            input:
-#                case_vcf_gz = KAGEPlusGLIMPSECase.glimpse_vcf_gz,
-#                case_vcf_gz_tbi = KAGEPlusGLIMPSECase.glimpse_vcf_gz_tbi,
-#                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
-#                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
-#                label = "KAGE+GLIMPSE",
-#                sample_name = leave_one_out_sample_name,
-#                docker = docker,
-#                monitoring_script = monitoring_script,
-#        }
+        call KAGEPanel.KAGEPanel as KAGELeaveOneOutPanel {
+            input:
+                input_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
+                input_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
+                reference_fasta = reference_fasta,
+                reference_fasta_fai = reference_fasta_fai,
+                output_prefix = leave_one_out_output_prefix,
+                chromosomes = chromosomes,
+                docker = kage_docker,
+                monitoring_script = monitoring_script
+        }
+
+        # KAGE+GLIMPSE case
+        call KAGEPlusGLIMPSECase {
+            input:
+                input_fasta = PreprocessCaseReads.preprocessed_fasta,
+                panel_index = KAGELeaveOneOutPanel.index,
+                panel_kmer_index_only_variants_with_revcomp = KAGELeaveOneOutPanel.kmer_index_only_variants_with_revcomp,
+                glimpse_panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
+                glimpse_panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
+                reference_fasta_fai = reference_fasta_fai,
+                chromosomes = chromosomes,
+                output_prefix = leave_one_out_sample_name,
+                sample_name = leave_one_out_sample_name,
+                docker = kage_docker,
+                monitoring_script = monitoring_script
+        }
+
+        # KAGE evaluation
+        call CalculateMetrics as CalculateMetricsKAGE {
+            input:
+                case_vcf_gz = KAGEPlusGLIMPSECase.kage_vcf_gz,
+                case_vcf_gz_tbi = KAGEPlusGLIMPSECase.kage_vcf_gz_tbi,
+                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
+                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
+                label = "KAGE",
+                sample_name = leave_one_out_sample_name,
+                docker = docker,
+                monitoring_script = monitoring_script,
+        }
+
+        # KAGE+GLIMPSE evaluation
+        call CalculateMetrics as CalculateMetricsKAGEPlusGLIMPSE {
+            input:
+                case_vcf_gz = KAGEPlusGLIMPSECase.glimpse_vcf_gz,
+                case_vcf_gz_tbi = KAGEPlusGLIMPSECase.glimpse_vcf_gz_tbi,
+                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
+                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
+                label = "KAGE+GLIMPSE",
+                sample_name = leave_one_out_sample_name,
+                docker = docker,
+                monitoring_script = monitoring_script,
+        }
 
         # PanGenie case
         call PanGenieCase.PanGenie as PanGenieCase {
@@ -204,9 +204,9 @@ task PreprocessPanelVCF {
 
         truvari anno svinfo -o ~{output_prefix}.subset.svinfo.vcf.gz ~{output_prefix}.subset.vcf.gz
 
-        bcftools annotate -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Oz -o ~{output_prefix}.subset.svinfo.RM.vcf.gz ~{output_prefix}.subset.svinfo.vcf.gz
-        bcftools annotate -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Oz -o ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz ~{output_prefix}.subset.svinfo.RM.vcf.gz
-        bcftools annotate -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
+        bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Oz -o ~{output_prefix}.subset.svinfo.RM.vcf.gz ~{output_prefix}.subset.svinfo.vcf.gz
+        bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Oz -o ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz ~{output_prefix}.subset.svinfo.RM.vcf.gz
+        bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
     }
 
@@ -446,6 +446,7 @@ task CalculateMetrics {
                  <<-'EOF'
         import argparse
         import allel
+        import numpy as np
         import pandas as pd
         import sklearn.metrics
         import matplotlib
@@ -503,7 +504,7 @@ task CalculateMetrics {
                 precisions = []
                 recalls = []
                 for f, (filter_name, is_v) in enumerate(is_fv):
-                    if context is 'US':
+                    if context == 'US':
                         is_context_v = ~(panel_callset[f'variants/RM'] | panel_callset[f'variants/SD'] | panel_callset[f'variants/SR'])
                     else:
                         is_context_v = panel_callset[f'variants/{context}']
