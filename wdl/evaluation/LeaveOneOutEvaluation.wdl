@@ -467,7 +467,7 @@ task CalculateMetrics {
 
             fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
-            plt.title(f'{sample_name}, {label}')
+            ax[0].set_title(f'{sample_name}, {label}')
             ax[0].set_ylabel('number of variants')
             ax[1].set_ylabel('precision\n(weighted)')
             ax[1].set_ylim([0., 1.005])
