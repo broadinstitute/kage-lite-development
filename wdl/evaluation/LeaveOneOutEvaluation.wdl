@@ -467,6 +467,7 @@ task CalculateMetrics {
 
             fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
+            plt.title(f'{sample_name}, {label}')
             ax[0].set_ylabel('number of variants')
             ax[1].set_ylabel('precision\n(weighted)')
             ax[1].set_ylim([0., 1.005])
@@ -535,7 +536,6 @@ task CalculateMetrics {
                 ax[0].legend(loc='upper right')
                 ax[1].plot(precisions, label=f'{label} {context}')
                 ax[2].plot(recalls, label=f'{label} {context}')
-                ax[2].legend(loc='lower left')
 
             metrics_df = pd.DataFrame.from_dict(metrics_dicts)
             metrics_df.to_csv(f'{sample_name}.{label}.metrics.tsv', sep='\t', index=False)

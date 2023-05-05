@@ -6,18 +6,21 @@
   "LeaveOneOutEvaluation.KAGEPlusGLIMPSECase.average_coverage": "30",
   "LeaveOneOutEvaluation.kage_docker": "kage-lite/kage-lite-testing",
   "LeaveOneOutEvaluation.leave_one_out_bam_idxs": [
-    "../resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.cram.crai",
-    "../resources/HG00268.final.chr1-1Mbp-chr2-1Mbp.cram.crai"],
+    "../resources/HG00171.final.chr1-1Mbp-chr2-1Mbp.cram.crai",
+    "../resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.cram.crai"],
   "LeaveOneOutEvaluation.leave_one_out_bams": [
-    "../resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.cram",
-    "../resources/HG00268.final.chr1-1Mbp-chr2-1Mbp.cram"],
+    "../resources/HG00171.final.chr1-1Mbp-chr2-1Mbp.cram",
+    "../resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.cram"],
   "LeaveOneOutEvaluation.leave_one_out_sample_names": [
-    "HG00731",
-    "HG00268"],
+    "HG00171",
+    "HG00731"],
   "LeaveOneOutEvaluation.output_prefix": "test",
   "LeaveOneOutEvaluation.pangenie_docker": "us.gcr.io/broad-dsde-methods/slee/pangenie",
   "LeaveOneOutEvaluation.reference_fasta": "../resources/GRCh38_full_analysis_set_plus_decoy_hla.chr1-1Mbp-chr2-1Mbp.fa",
   "LeaveOneOutEvaluation.reference_fasta_fai": "../resources/GRCh38_full_analysis_set_plus_decoy_hla.chr1-1Mbp-chr2-1Mbp.fa.fai",
+  "LeaveOneOutEvaluation.repeat_mask_bed": "../resources/hg38.RM.sorted.merged.chr1-1Mbp-chr2-1Mbp.bed",
+  "LeaveOneOutEvaluation.segmental_duplications_bed": "../resources/hg38.SegDup.sorted.merged.chr1-1Mbp-chr2-1Mbp.bed",
+  "LeaveOneOutEvaluation.simple_repeats_bed": "../resources/hg38.SimpRep.sorted.merged.chr1-1Mbp-chr2-1Mbp.bed",
   "LeaveOneOutEvaluation.PanGenieCase.extra_args": "-e 100000000"
 }
 
