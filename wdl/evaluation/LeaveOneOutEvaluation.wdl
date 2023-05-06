@@ -344,8 +344,6 @@ task KAGEPlusGLIMPSECase {
         RuntimeAttributes runtime_attributes = {}
     }
 
-    Int num_chromosomes = length(chromosomes)
-
     command {
         set -e
 
