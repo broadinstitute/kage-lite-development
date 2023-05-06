@@ -339,11 +339,12 @@ task KAGEPlusGLIMPSECase {
         String docker
         File? monitoring_script
 
-        Int? kmer_mapper_num_threads = 1
-        String kmer_mapper_args = "-d True -c 100000000 -t ~{kmer_mapper_num_threads}"
+        String kmer_mapper_args = "-c 100000000"
 
         RuntimeAttributes runtime_attributes = {}
     }
+
+    Int num_chromosomes = length(chromosomes)
 
     command {
         set -e
@@ -354,8 +355,11 @@ task KAGEPlusGLIMPSECase {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
+        NPROC=$(nproc)
+
         kmer_mapper map \
             ~{kmer_mapper_args} \
+            -t $NPROC \
             -i ~{panel_kmer_index_only_variants_with_revcomp} \
             -f ~{input_fasta} \
             -o ~{output_prefix}.kmer_counts.npy
@@ -371,13 +375,14 @@ task KAGEPlusGLIMPSECase {
         bgzip -c ~{output_prefix}.kage.vcf > ~{output_prefix}.kage.vcf.gz
         bcftools index -t ~{output_prefix}.kage.vcf.gz
 
-        bcftools view --no-version ~{output_prefix}.kage.vcf | sed -e 's/nan/-0.01/g' | sed -e 's/inf/100000/g' | bgzip > ~{output_prefix}.kage.nonan.vcf.gz
+        bcftools view --no-version ~{output_prefix}.kage.vcf | sed -e 's/nan/-1000000.0/g' | sed -e 's/-inf/-1000000.0/g' | sed -e 's/inf/-1000000.0/g' | bgzip > ~{output_prefix}.kage.nonan.vcf.gz
         bcftools index -t ~{output_prefix}.kage.nonan.vcf.gz
 
         # TODO update to GLIMPSE2; first figure out why it complains about AC/AN and GT being inconsistent?
         wget https://github.com/odelaneau/GLIMPSE/releases/download/v1.1.1/GLIMPSE_phase_static
         chmod +x GLIMPSE_phase_static
 
+        # TODO parallelize
         for CHROMOSOME in ~{sep=" " chromosomes}
         do
             CHROMOSOME_LENGTH=$(grep -P "$CHROMOSOME\t" ~{reference_fasta_fai} | cut -f 2)

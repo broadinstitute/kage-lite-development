@@ -23,6 +23,8 @@ workflow KAGEPanel {
         String docker
         File? monitoring_script
 
+        Int? spacing
+
         RuntimeAttributes? runtime_attributes
         RuntimeAttributes? medium_runtime_attributes
         RuntimeAttributes? large_runtime_attributes
@@ -131,6 +133,7 @@ workflow KAGEPanel {
                 reference_fasta = reference_fasta,
                 chromosome = chromosomes[i],
                 output_prefix = output_prefix,
+                spacing = spacing,
                 docker = docker,
                 monitoring_script = monitoring_script,
                 runtime_attributes = large_runtime_attributes
