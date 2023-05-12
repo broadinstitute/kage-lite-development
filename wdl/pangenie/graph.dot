@@ -1,0 +1,10 @@
+digraph PanGenieCase {
+  #rankdir=LR;
+  compound=true;
+
+  # Links
+  
+
+  # Nodes
+  CALL_PanGenie [label="call PanGenie"]
+}

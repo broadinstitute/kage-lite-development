@@ -6,8 +6,12 @@ dist/
 *.npy
 *.deb
 *.fa
+*.so
+*.backup
 __pycache__
-wdl/cromwell-*.jar
-wdl/cromwell-executions
-wdl/womtool-*.jar
-wdl/cromwell-workflow-logs
+cromwell-*.jar
+cromwell-executions
+womtool-*.jar
+cromwell-workflow-logs
+wdl/resources/*.conf
+*/build/

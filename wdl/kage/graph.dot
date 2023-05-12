@@ -1,0 +1,93 @@
+digraph KAGEPanel {
+  #rankdir=LR;
+  compound=true;
+
+  # Links
+  CALL_MakeChromosomeHaplotypeToNodes -> CALL_MergeChromosomeHaplotypeToNodes
+  CALL_MakeChromosomeVariantToNodes -> CALL_SampleChromosomeStructuralVariantKmers
+  CALL_GetChromosomeShortVariantKmers -> CALL_MergeChromosomeShortAndStructuralVariantKmers
+  CALL_MakeChromosomeGenotypeMatrix -> CALL_MakeHelperModel
+  CALL_MergeChromosomeShortAndStructuralVariantKmers -> CALL_MergeChromosomeVariantKmers
+  CALL_MergeChromosomeKmersFromLinearReference -> CALL_MakeLinearReferenceKmerCounter
+  CALL_MakeLinearReferenceKmerCounter -> CALL_GetChromosomeShortVariantKmers
+  CALL_MakeChromosomeVariantToNodes -> CALL_GetChromosomeShortVariantKmers
+  SCATTER_0_VARIABLE_i -> CALL_MakeChromosomeVariantToNodes
+  CALL_MergeChromosomeVariantToNodes -> CALL_MergeChromosomeKmersFromLinearReference
+  SCATTER_0_VARIABLE_i -> CALL_MakeChromosomeGenotypeMatrix
+  CALL_MergeChromosomeGraphs -> CALL_MakeCountModel
+  CALL_RefineCountModel -> CALL_MakeIndexBundle
+  CALL_MakeChromosomeGraph -> CALL_SampleChromosomeStructuralVariantKmers
+  CALL_MakeSitesOnlyVcfAndNumpyVariants -> CALL_MakeIndexBundle
+  CALL_MergeChromosomeVariantToNodes -> CALL_MergeChromosomeVariantKmers
+  SCATTER_2_VARIABLE_i -> CALL_SampleChromosomeKmersFromLinearReference
+  CALL_MakeChromosomeGraph -> CALL_GetChromosomeShortVariantKmers
+  CALL_MergeChromosomeVariantToNodes -> CALL_FindTrickyVariants
+  CALL_MakeCountModel -> CALL_FindTrickyVariants
+  CALL_MakeChromosomeGraph -> CALL_MakeChromosomeVariantToNodes
+  CALL_MakeSitesOnlyVcfAndNumpyVariants -> CALL_GetChromosomeShortVariantKmers
+  CALL_MergeChromosomeVariantKmers -> CALL_MakeReverseVariantKmerIndex
+  CALL_MergeChromosomeHaplotypeToNodes -> CALL_MakeCountModel
+  CALL_MakeChromosomeGraph -> CALL_MergeChromosomeGraphs
+  CALL_MakeVariantKmerIndexWithReverseComplements -> CALL_MakeCountModel
+  CALL_MakeSitesOnlyVcfAndNumpyVariants -> CALL_MakeChromosomeVariantToNodes
+  CALL_MakeChromosomeVariantToNodes -> CALL_MakeChromosomeHaplotypeToNodes
+  CALL_MakeReverseVariantKmerIndex -> CALL_FindTrickyVariants
+  SCATTER_0_VARIABLE_i -> CALL_MakeChromosomeHaplotypeToNodes
+  SCATTER_0_VARIABLE_i -> CALL_MakeChromosomeGraph
+  SCATTER_1_VARIABLE_i -> CALL_SampleChromosomeStructuralVariantKmers
+  SCATTER_1_VARIABLE_i -> CALL_GetChromosomeShortVariantKmers
+  CALL_MakeChromosomeVariantToNodes -> CALL_MergeChromosomeVariantToNodes
+  CALL_SampleChromosomeKmersFromLinearReference -> CALL_MergeChromosomeKmersFromLinearReference
+  CALL_MergeChromosomeVariantToNodes -> CALL_MakeIndexBundle
+  CALL_SampleChromosomeStructuralVariantKmers -> CALL_MergeChromosomeShortAndStructuralVariantKmers
+  CALL_MakeChromosomeGenotypeMatrix -> CALL_MakeChromosomeHaplotypeToNodes
+  CALL_MergeChromosomeVariantToNodes -> CALL_MergeChromosomeHaplotypeToNodes
+  SCATTER_1_VARIABLE_i -> CALL_MergeChromosomeShortAndStructuralVariantKmers
+  CALL_MakeHelperModel -> CALL_MakeIndexBundle
+  CALL_MergeChromosomeVariantToNodes -> CALL_MakeHelperModel
+  CALL_MakeCountModel -> CALL_RefineCountModel
+  CALL_MakeVariantKmerIndexWithReverseComplements -> CALL_MakeIndexBundle
+  CALL_MergeChromosomeVariantToNodes -> CALL_RefineCountModel
+  CALL_FindTrickyVariants -> CALL_MakeIndexBundle
+  CALL_MakeLinearReferenceKmerCounter -> CALL_SampleChromosomeStructuralVariantKmers
+  CALL_MergeChromosomeVariantKmers -> CALL_MakeVariantKmerIndexWithReverseComplements
+
+  # Nodes
+  subgraph cluster_2 {
+    style="filled,solid";
+    fillcolor=white;
+    CALL_SampleChromosomeKmersFromLinearReference [label="call SampleChromosomeKmersFromLinearReference"]
+    SCATTER_2_VARIABLE_i [shape="hexagon" label="scatter over Int as i"]
+  }
+  CALL_MergeChromosomeVariantKmers [label="call MergeChromosomeVariantKmers"]
+  CALL_FindTrickyVariants [label="call FindTrickyVariants"]
+  subgraph cluster_0 {
+    style="filled,solid";
+    fillcolor=white;
+    CALL_MakeChromosomeHaplotypeToNodes [label="call MakeChromosomeHaplotypeToNodes"]
+    CALL_MakeChromosomeGenotypeMatrix [label="call MakeChromosomeGenotypeMatrix"]
+    CALL_MakeChromosomeGraph [label="call MakeChromosomeGraph"]
+    SCATTER_0_VARIABLE_i [shape="hexagon" label="scatter over Int as i"]
+    CALL_MakeChromosomeVariantToNodes [label="call MakeChromosomeVariantToNodes"]
+  }
+  CALL_MakeSitesOnlyVcfAndNumpyVariants [label="call MakeSitesOnlyVcfAndNumpyVariants"]
+  CALL_MakeLinearReferenceKmerCounter [label="call MakeLinearReferenceKmerCounter"]
+  subgraph cluster_1 {
+    style="filled,solid";
+    fillcolor=white;
+    CALL_SampleChromosomeStructuralVariantKmers [label="call SampleChromosomeStructuralVariantKmers"]
+    CALL_GetChromosomeShortVariantKmers [label="call GetChromosomeShortVariantKmers"]
+    CALL_MergeChromosomeShortAndStructuralVariantKmers [label="call MergeChromosomeShortAndStructuralVariantKmers"]
+    SCATTER_1_VARIABLE_i [shape="hexagon" label="scatter over Int as i"]
+  }
+  CALL_MergeChromosomeHaplotypeToNodes [label="call MergeChromosomeHaplotypeToNodes"]
+  CALL_MergeChromosomeKmersFromLinearReference [label="call MergeChromosomeKmersFromLinearReference"]
+  CALL_MergeChromosomeVariantToNodes [label="call MergeChromosomeVariantToNodes"]
+  CALL_MakeVariantKmerIndexWithReverseComplements [label="call MakeVariantKmerIndexWithReverseComplements"]
+  CALL_MakeIndexBundle [label="call MakeIndexBundle"]
+  CALL_MakeHelperModel [label="call MakeHelperModel"]
+  CALL_MergeChromosomeGraphs [label="call MergeChromosomeGraphs"]
+  CALL_RefineCountModel [label="call RefineCountModel"]
+  CALL_MakeReverseVariantKmerIndex [label="call MakeReverseVariantKmerIndex"]
+  CALL_MakeCountModel [label="call MakeCountModel"]
+}

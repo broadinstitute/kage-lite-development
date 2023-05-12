@@ -1,0 +1,43 @@
+digraph LeaveOneOutEvaluation {
+  #rankdir=LR;
+  compound=true;
+
+  # Links
+  CALL_CreateLeaveOneOutPanelVCF -> CALL_PanGenieCase
+  SCATTER_0_VARIABLE_i -> CALL_CalculateMetricsPanGenie
+  CALL_PreprocessPanelVCF -> CALL_CreateLeaveOneOutPanelVCF
+  CALL_PreprocessPanelVCF -> CALL_CalculateMetricsPanGenie
+  CALL_KAGELeaveOneOutPanel -> CALL_KAGEPlusGLIMPSECase
+  SCATTER_0_VARIABLE_i -> CALL_CalculateMetricsKAGE
+  CALL_PreprocessPanelVCF -> CALL_CalculateMetricsKAGE
+  SCATTER_0_VARIABLE_i -> CALL_CalculateMetricsKAGEPlusGLIMPSE
+  SCATTER_0_VARIABLE_i -> CALL_PreprocessCaseReads
+  SCATTER_0_VARIABLE_i -> CALL_KAGELeaveOneOutPanel
+  CALL_KAGEPlusGLIMPSECase -> CALL_CalculateMetricsKAGEPlusGLIMPSE
+  CALL_CreateLeaveOneOutPanelVCF -> CALL_KAGELeaveOneOutPanel
+  CALL_PreprocessCaseReads -> CALL_PanGenieCase
+  CALL_KAGEPlusGLIMPSECase -> CALL_CalculateMetricsKAGE
+  CALL_PreprocessCaseReads -> CALL_KAGEPlusGLIMPSECase
+  CALL_PreprocessPanelVCF -> CALL_CalculateMetricsKAGEPlusGLIMPSE
+  SCATTER_0_VARIABLE_i -> CALL_CreateLeaveOneOutPanelVCF
+  CALL_PanGenieCase -> CALL_CalculateMetricsPanGenie
+  CALL_CreateLeaveOneOutPanelVCF -> CALL_KAGEPlusGLIMPSECase
+  SCATTER_0_VARIABLE_i -> CALL_PanGenieCase
+  SCATTER_0_VARIABLE_i -> CALL_KAGEPlusGLIMPSECase
+
+  # Nodes
+  CALL_PreprocessPanelVCF [label="call PreprocessPanelVCF"]
+  subgraph cluster_0 {
+    style="filled,solid";
+    fillcolor=white;
+    CALL_KAGEPlusGLIMPSECase [label="call KAGEPlusGLIMPSECase"]
+    SCATTER_0_VARIABLE_i [shape="hexagon" label="scatter over Int as i"]
+    CALL_PreprocessCaseReads [label="call PreprocessCaseReads"]
+    CALL_CalculateMetricsKAGE [label="call CalculateMetricsKAGE"]
+    CALL_CalculateMetricsKAGEPlusGLIMPSE [label="call CalculateMetricsKAGEPlusGLIMPSE"]
+    CALL_CreateLeaveOneOutPanelVCF [label="call CreateLeaveOneOutPanelVCF"]
+    CALL_KAGELeaveOneOutPanel [label="call KAGELeaveOneOutPanel";shape="oval";peripheries=2]
+    CALL_PanGenieCase [label="call PanGenieCase"]
+    CALL_CalculateMetricsPanGenie [label="call CalculateMetricsPanGenie"]
+  }
+}

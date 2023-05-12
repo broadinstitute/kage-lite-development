@@ -1,0 +1,166 @@
+import logging
+
+import dill
+import numpy as np
+
+from .kmer_hashing import kmer_hashes_to_reverse_complement_hash
+
+
+class FlatKmers2:
+    def __init__(self, hashes, start_nodes, start_offsets, nodes, allele_frequencies):
+        assert len(hashes) == len(nodes)
+        assert len(start_nodes) == len(nodes)
+        assert len(start_offsets) == len(start_nodes)
+
+        self._hashes = hashes
+        self._nodes = nodes
+        self._start_nodes = start_nodes
+        self._start_offsets = start_offsets
+
+        if allele_frequencies is None:
+            logging.info("Allele frequencies not provided. Setting all to 1.0")
+            self._allele_frequencies = np.zeros(len(self._hashes), dtype=np.single) + 1.0
+        else:
+            self._allele_frequencies = allele_frequencies
+
+
+    def __str__(self):
+        return '\n'.join([str(data) for data in [self._hashes, self._nodes]])
+
+    def __repr__(self):
+        return str(self)
+
+
+class FlatKmers:
+    def __init__(self, hashes, nodes, ref_offsets=None, allele_frequencies=None):
+        assert len(hashes) == len(nodes)
+        self._hashes = hashes
+        self._nodes = nodes
+        if ref_offsets is None:
+            self._ref_offsets = np.zeros(len(self._nodes))
+        else:
+            self._ref_offsets = ref_offsets
+
+        if allele_frequencies is None:
+            logging.info("Allele frequencies not provided. Setting all to 1.0")
+            self._allele_frequencies = np.zeros(len(self._hashes), dtype=np.single) + 1.0
+        else:
+            self._allele_frequencies = allele_frequencies
+
+    def describtion(self):
+        out = ""
+        for kmer, node in zip(self._hashes, self._nodes):
+            out += "%d: %d\n" % (kmer, node)
+        return out
+
+
+    @classmethod
+    def from_file(cls, file_name):
+        try:
+            with open(file_name, 'rb') as f:
+                data = dill.load(f)
+        except FileNotFoundError:
+            with open(file_name + ".npz", 'rb') as f:
+                data = dill.load(f)
+
+        logging.info("Loaded kmers from %s" % file_name)
+        return data
+
+    def to_file(self, file_name):
+        if not file_name.endswith(".pkl"):
+            file_name = file_name + ".pkl"
+
+        with open(file_name, 'wb') as f:
+            dill.dump(self, f)
+        logging.info("Saved to %s" % file_name)
+
+
+    @classmethod
+    def from_multiple_flat_kmers(cls, flat_kmers_list):
+        hashes = []
+        nodes = []
+        ref_offsets = []
+        allele_frequencies = []
+        for flat in flat_kmers_list:
+            hashes.extend(flat._hashes)
+            nodes.extend(flat._nodes)
+            if flat._ref_offsets is not None:
+                ref_offsets.extend(flat._ref_offsets)
+
+            allele_frequencies.extend(flat._allele_frequencies)
+
+        if len(ref_offsets) == 0:
+            ref_offsets = None
+        else:
+            ref_offsets = np.array(ref_offsets, np.uint64)
+
+        return FlatKmers(np.array(hashes, dtype=np.uint64), np.array(nodes, np.uint32), ref_offsets, np.array(allele_frequencies, dtype=np.single))
+
+    def sum_of_kmer_frequencies(self, kmer_index_with_frequencies):
+        return sum([0] + [max(1, kmer_index_with_frequencies.get_frequency(int(kmer))) for kmer in self._hashes])
+
+    def maximum_kmer_frequency(self, kmer_index_with_frequencies):
+        return max([0] + [kmer_index_with_frequencies.get_frequency(int(kmer)) for kmer in self._hashes])
+    
+    def get_new_without_singletons(self):
+        has_been_traversed = set()
+        new_hashes = []
+        new_nodes = []
+        new_ref_offsets = []
+        new_allele_frequencies = []
+
+        for i in range(len(self._hashes)):
+            if i % 1000000 == 0:
+                logging.info("%d entries processed. %d kept" % (i, len(new_hashes)))
+
+            hash = self._hashes[i]
+            if hash in has_been_traversed:
+                new_hashes.append(hash)
+                new_nodes.append(self._nodes[i])
+                new_ref_offsets.append(self._ref_offsets[i])
+                new_allele_frequencies.append(self._allele_frequencies[i])
+            else:
+                has_been_traversed.add(hash)
+
+        logging.info("Making new numpy arrays")
+        new_hashes = np.array(new_hashes, dtype=self._hashes.dtype)
+        new_nodes = np.array(new_nodes, dtype=self._nodes.dtype)
+        new_ref_offsets = np.array(new_ref_offsets, dtype=self._ref_offsets.dtype)
+        new_allele_frequencies = np.array(new_allele_frequencies, dtype=self._allele_frequencies.dtype)
+
+        logging.info("Returning new flat kmers")
+        return FlatKmers(new_hashes, new_nodes, new_ref_offsets, new_allele_frequencies)
+
+    def get_reverse_complement_flat_kmers(self, k):
+        return FlatKmers(kmer_hashes_to_reverse_complement_hash(self._hashes, k),
+                         self._nodes,
+                         self._ref_offsets,
+                         self._allele_frequencies)
+
+
+def letter_sequence_to_numeric(sequence):
+    if not isinstance(sequence, np.ndarray):
+        sequence = np.array(list(sequence.lower()), dtype="<U1")
+
+    numeric = np.zeros_like(sequence, dtype=np.uint64)
+    numeric[np.where(sequence == "n")[0]] = 0
+    numeric[np.where(sequence == "a")[0]] = 0
+    numeric[np.where(sequence == "c")[0]] = 1
+    numeric[np.where(sequence == "t")[0]] = 3
+    numeric[np.where(sequence == "g")[0]] = 2
+    numeric[np.where(sequence == "m")[0]] = 0
+    return numeric
+
+def numeric_to_letter_sequence(sequence):
+
+    numeric = np.zeros_like(sequence, dtype=object)
+    numeric[np.where(sequence == 0)[0]] = "a"
+    numeric[np.where(sequence == 1)[0]] = "c"
+    numeric[np.where(sequence == 2)[0]] = "g"
+    numeric[np.where(sequence == 3)[0]] = "t"
+    return numeric
+
+
+
+
+
