@@ -26,6 +26,7 @@ workflow LeaveOneOutEvaluation {
         String output_prefix
         Array[String] chromosomes
         Array[String] leave_one_out_sample_names
+        Boolean do_pangenie
 
         # TODO we require the alignments to subset by chromosome; change to start from raw reads
         Array[File] leave_one_out_bams
@@ -140,31 +141,33 @@ workflow LeaveOneOutEvaluation {
                 monitoring_script = monitoring_script,
         }
 
-        # PanGenie case
-        call PanGenieCase.PanGenie as PanGenieCase {
-            input:
-                panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
-                panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
-                input_fasta = PreprocessCaseReads.preprocessed_fasta,
-                reference_fasta = reference_fasta,
-                chromosomes = chromosomes,
-                sample_name = leave_one_out_sample_name,
-                output_prefix = leave_one_out_sample_name,
-                docker = pangenie_docker,
-                monitoring_script = monitoring_script
-        }
+        if (do_pangenie) {
+            # PanGenie case
+            call PanGenieCase.PanGenie as PanGenieCase {
+              input:
+                  panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
+                  panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
+                  input_fasta = PreprocessCaseReads.preprocessed_fasta,
+                  reference_fasta = reference_fasta,
+                  chromosomes = chromosomes,
+                  sample_name = leave_one_out_sample_name,
+                  output_prefix = leave_one_out_sample_name,
+                  docker = pangenie_docker,
+                  monitoring_script = monitoring_script
+            }
 
-        # PanGenie evaluation
-        call CalculateMetrics as CalculateMetricsPanGenie {
-            input:
-                case_vcf_gz = PanGenieCase.genotyping_vcf_gz,
-                case_vcf_gz_tbi = PanGenieCase.genotyping_vcf_gz_tbi,
-                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
-                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
-                label = "PanGenie",
-                sample_name = leave_one_out_sample_name,
-                docker = docker,
-                monitoring_script = monitoring_script,
+            # PanGenie evaluation
+            call CalculateMetrics as CalculateMetricsPanGenie {
+              input:
+                  case_vcf_gz = PanGenieCase.genotyping_vcf_gz,
+                  case_vcf_gz_tbi = PanGenieCase.genotyping_vcf_gz_tbi,
+                  panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
+                  panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
+                  label = "PanGenie",
+                  sample_name = leave_one_out_sample_name,
+                  docker = docker,
+                  monitoring_script = monitoring_script,
+            }
         }
     }
 
@@ -197,15 +200,20 @@ task PreprocessPanelVCF {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} | \
-            bcftools norm --no-version -m+ | \
-            bcftools view --no-version --max-alleles 2 |
+        echo "bcftools view"
+        bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
+            bcftools norm --no-version -m+ -Ou | \
+            bcftools view --no-version --max-alleles 2 -Ou |
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.subset.vcf.gz -- -t AF
 
+        echo "truvari"
         truvari anno svinfo -o ~{output_prefix}.subset.svinfo.vcf.gz ~{output_prefix}.subset.vcf.gz
 
+        echo "bcftools annotate"
         bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Oz -o ~{output_prefix}.subset.svinfo.RM.vcf.gz ~{output_prefix}.subset.svinfo.vcf.gz
+        bcftools index -t ~{output_prefix}.subset.svinfo.RM.vcf.gz
         bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Oz -o ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz ~{output_prefix}.subset.svinfo.RM.vcf.gz
+        bcftools index -t ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
         bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
     }
