@@ -182,6 +182,7 @@ task PreprocessPanelVCF {
         File repeat_mask_bed
         File segmental_duplications_bed
         File simple_repeats_bed
+        File genes_bed
         Array[String] chromosomes
         String output_prefix
 
@@ -200,21 +201,14 @@ task PreprocessPanelVCF {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        echo "bcftools view"
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
             bcftools norm --no-version -m+ -Ou | \
-            bcftools view --no-version --max-alleles 2 -Ou |
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.subset.vcf.gz -- -t AF
-
-        echo "truvari"
-        truvari anno svinfo -o ~{output_prefix}.subset.svinfo.vcf.gz ~{output_prefix}.subset.vcf.gz
-
-        echo "bcftools annotate"
-        bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Oz -o ~{output_prefix}.subset.svinfo.RM.vcf.gz ~{output_prefix}.subset.svinfo.vcf.gz
-        bcftools index -t ~{output_prefix}.subset.svinfo.RM.vcf.gz
-        bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Oz -o ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz ~{output_prefix}.subset.svinfo.RM.vcf.gz
-        bcftools index -t ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
-        bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz ~{output_prefix}.subset.svinfo.RM.SD.vcf.gz
+            bcftools view --no-version --max-alleles 2 -Ou | \
+            bcftools plugin fill-tags --no-version -Ou -- -t AF | \
+            truvari anno svinfo | \
+            bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Ou | \
+            bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Ou  | \
+            bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
     }
 
@@ -264,17 +258,15 @@ task PreprocessCaseReads {
         # hacky way to get chromosomes into bed file
         grep -P '~{sep="\\t|" chromosomes}\t' ~{reference_fasta_fai} | cut -f 1,2 | sed -e 's/\t/\t1\t/g' > chromosomes.bed
 
-        # subset cram to chromosomes
-        samtools view -L chromosomes.bed -C -o ~{output_prefix}.cram --write-index ~{input_bam} -T ~{reference_fasta}
-
-        # filter out read pairs containing N nucleotides
+        # subset cram to chromosomes, filter out read pairs containing N nucleotides
         # TODO move functionality into KAGE code
-        samtools fasta --reference ~{reference_fasta} ~{output_prefix}.cram | sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
+        samtools view -L chromosomes.bed --threads 1 ~{input_bam} -reference ~{reference_fasta} | \
+            sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
     }
 
     runtime {
         docker: docker
-        cpu: select_first([runtime_attributes.cpu, 1])
+        cpu: select_first([runtime_attributes.cpu, 2])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])

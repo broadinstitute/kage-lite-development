@@ -236,7 +236,7 @@ workflow KAGEPanel {
             output_prefix = output_prefix,
             docker = docker,
             monitoring_script = monitoring_script,
-            runtime_attributes = medium_runtime_attributes
+            runtime_attributes = large_runtime_attributes
     }
 
     call RefineCountModel {
