@@ -263,7 +263,7 @@ task PreprocessCaseReads {
 
         # subset cram to chromosomes, filter out read pairs containing N nucleotides
         # TODO move functionality into KAGE code
-        samtools view -L chromosomes.bed --threads 1 ~{input_bam} --reference ~{reference_fasta} | \
+        samtools view -h -L chromosomes.bed --threads 1 ~{input_bam} --reference ~{reference_fasta} | \
             sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
     }
 
