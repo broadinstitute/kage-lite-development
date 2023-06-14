@@ -23,6 +23,7 @@ workflow LeaveOneOutEvaluation {
         File repeat_mask_bed
         File segmental_duplications_bed
         File simple_repeats_bed
+        File challenging_medically_relevant_genes_bed
         String output_prefix
         Array[String] chromosomes
         Array[String] leave_one_out_sample_names
@@ -50,6 +51,7 @@ workflow LeaveOneOutEvaluation {
             repeat_mask_bed = repeat_mask_bed,
             segmental_duplications_bed = segmental_duplications_bed,
             simple_repeats_bed = simple_repeats_bed,
+            challenging_medically_relevant_genes_bed = challenging_medically_relevant_genes_bed,
             chromosomes = chromosomes,
             output_prefix = output_prefix,
             docker = docker,
@@ -182,7 +184,7 @@ task PreprocessPanelVCF {
         File repeat_mask_bed
         File segmental_duplications_bed
         File simple_repeats_bed
-        File genes_bed
+        File challenging_medically_relevant_genes_bed
         Array[String] chromosomes
         String output_prefix
 
@@ -207,8 +209,9 @@ task PreprocessPanelVCF {
             bcftools plugin fill-tags --no-version -Ou -- -t AF | \
             truvari anno svinfo | \
             bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Ou | \
-            bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Ou  | \
-            bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Oz -o ~{output_prefix}.preprocessed.vcf.gz
+            bcftools annotate --no-version -a ~{segmental_duplications_bed} -c CHROM,FROM,TO -m +SD -Ou | \
+            bcftools annotate --no-version -a ~{simple_repeats_bed} -c CHROM,FROM,TO -m +SR -Ou | \
+            bcftools annotate --no-version -a ~{challenging_medically_relevant_genes_bed} -c CHROM,FROM,TO -m +CMRG -Oz -o ~{output_prefix}.preprocessed.vcf.gz
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
     }
 
@@ -260,7 +263,7 @@ task PreprocessCaseReads {
 
         # subset cram to chromosomes, filter out read pairs containing N nucleotides
         # TODO move functionality into KAGE code
-        samtools view -L chromosomes.bed --threads 1 ~{input_bam} -reference ~{reference_fasta} | \
+        samtools view -L chromosomes.bed --threads 1 ~{input_bam} --reference ~{reference_fasta} | \
             sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
     }
 

@@ -17,10 +17,10 @@ cp $INDEX $OUTPUT_DIR
 cp $KMER_INDEX $OUTPUT_DIR
 
 # run kmer mapping and genotyping (w/o helper model)
-docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test -v $(readlink -m resources):/kage-lite/resources $DOCKER \
+docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
   kmer_mapper map -d True -c 100000000 \
                   -i /kage-lite/test/$(basename $KMER_INDEX) \
-                  -f /kage-lite/resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.fasta \
+                  -f /kage-lite/wdl/resources/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.fasta \
                   -o /kage-lite/test/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.kmer_counts.npy
 
 docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
