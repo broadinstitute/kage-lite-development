@@ -20,6 +20,7 @@ workflow LeaveOneOutEvaluation {
         File input_vcf_gz_tbi
         File reference_fasta
         File reference_fasta_fai
+        File reference_dict
         File repeat_mask_bed
         File segmental_duplications_bed
         File simple_repeats_bed
@@ -30,10 +31,10 @@ workflow LeaveOneOutEvaluation {
         Boolean do_pangenie
 
         # TODO we require the alignments to subset by chromosome; change to start from raw reads
-        Array[File] leave_one_out_bams
-        Array[File] leave_one_out_bam_idxs
+        Array[File] leave_one_out_crams
 
         String docker
+        String gatk_docker
         String kage_docker
         String pangenie_docker
         File? monitoring_script
@@ -61,20 +62,28 @@ workflow LeaveOneOutEvaluation {
 
     scatter (i in range(length(leave_one_out_sample_names))) {
         String leave_one_out_sample_name = leave_one_out_sample_names[i]
-        String leave_one_out_bam = leave_one_out_bams[i]
-        String leave_one_out_bam_idx = leave_one_out_bam_idxs[i]
+        String leave_one_out_cram = leave_one_out_crams[i]
         String leave_one_out_output_prefix = output_prefix + ".LOO-" + leave_one_out_sample_name
+
+        call IndexCaseReads {
+            # TODO we require the alignments to subset by chromosome; change to start from raw reads
+            input:
+                input_cram = leave_one_out_cram,
+                docker = docker,
+                monitoring_script = monitoring_script
+        }
 
         call PreprocessCaseReads {
             # TODO we require the alignments to subset by chromosome; change to start from raw reads
             input:
-                input_bam = leave_one_out_bam,
-                input_bam_idx = leave_one_out_bam_idx,
+                input_cram = leave_one_out_cram,
+                input_cram_idx = IndexCaseReads.cram_idx,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
+                reference_dict = reference_dict,
                 output_prefix = leave_one_out_sample_name,
                 chromosomes = chromosomes,
-                docker = docker,
+                docker = gatk_docker,
                 monitoring_script = monitoring_script
         }
 
@@ -232,12 +241,56 @@ task PreprocessPanelVCF {
     }
 }
 
+# some 1000G CRAM indices have issues due to htsjdk version, so we reindex; see e.g. https://github.com/broadinstitute/gatk/issues/7076
+task IndexCaseReads {
+    input {
+        File input_cram
+
+        String docker
+        File? monitoring_script
+
+        RuntimeAttributes runtime_attributes = {}
+    }
+
+    # if we instead simply use File cram_idx = "~{input_cram}.crai" in the output block,
+    # Terra tries to localize an index adjacent to the CRAM in PreprocessCaseReads???
+    String output_prefix = basename(input_cram, ".cram")
+
+    command {
+        set -e
+
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
+            bash ~{monitoring_script} > monitoring.log &
+        fi
+
+        samtools index -@ $(nproc) ~{input_cram} ~{output_prefix}.cram.crai
+    }
+
+    runtime {
+        docker: docker
+        cpu: select_first([runtime_attributes.cpu, 2])
+        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 500]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
+        preemptible: select_first([runtime_attributes.preemptible, 2])
+        maxRetries: select_first([runtime_attributes.max_retries, 1])
+    }
+
+    output {
+        File cram_idx = "~{output_prefix}.cram.crai"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
 task PreprocessCaseReads {
     input {
-        File input_bam
-        File input_bam_idx
+        File input_cram
+        File input_cram_idx
         File reference_fasta
         File reference_fasta_fai
+        File reference_dict
         Array[String] chromosomes
         String output_prefix
 
@@ -261,17 +314,25 @@ task PreprocessCaseReads {
         # hacky way to get chromosomes into bed file
         grep -P '~{sep="\\t|" chromosomes}\t' ~{reference_fasta_fai} | cut -f 1,2 | sed -e 's/\t/\t1\t/g' > chromosomes.bed
 
-        # subset cram to chromosomes, filter out read pairs containing N nucleotides
+        # subset cram to chromosomes
+        gatk PrintReads \
+            -L chromosomes.bed \
+            -I ~{input_cram} \
+            --read-index ~{input_cram_idx} \
+            -R ~{reference_fasta} \
+            --disable-sequence-dictionary-validation \
+            -O ~{output_prefix}.bam
+
+        # filter out read pairs containing N nucleotides
         # TODO move functionality into KAGE code
-        samtools view -h -L chromosomes.bed --threads 1 ~{input_bam} --reference ~{reference_fasta} | \
-            sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
+        samtools fasta ~{output_prefix}.bam | sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
     }
 
     runtime {
         docker: docker
         cpu: select_first([runtime_attributes.cpu, 2])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 500]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
         preemptible: select_first([runtime_attributes.preemptible, 2])
         maxRetries: select_first([runtime_attributes.max_retries, 1])
@@ -305,7 +366,8 @@ task CreateLeaveOneOutPanelVCF {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        bcftools view --no-version ~{input_vcf_gz} -s ^~{leave_one_out_sample_name} | bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
+        bcftools view --no-version ~{input_vcf_gz} -s ^~{leave_one_out_sample_name} | \
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.vcf.gz
     }
 
@@ -393,6 +455,7 @@ task KAGEPlusGLIMPSECase {
                 --input-region $CHROMOSOME:1-$CHROMOSOME_LENGTH \
                 --output-region $CHROMOSOME:1-$CHROMOSOME_LENGTH \
                 --input-GL \
+                --thread $NPROC \
                 --output $CHROMOSOME.vcf.gz
             bcftools index -t $CHROMOSOME.vcf.gz
         done
