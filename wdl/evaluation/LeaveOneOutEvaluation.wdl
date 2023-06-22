@@ -597,7 +597,7 @@ task CalculateMetrics {
         def calculate_metrics_and_plot(case_vcf_gz, panel_vcf_gz, label, sample_name):
             samples = [sample_name]
             panel_callset = load_callset(panel_vcf_gz, samples=samples, fields='*', alt_number=1)
-            is_case_V = is_case_V
+            is_case_V = panel_callset['variants/CASE']
             panel_gt_vp = get_gt_vsp(panel_callset)[is_case_V, 0, :].compute()
 
 
