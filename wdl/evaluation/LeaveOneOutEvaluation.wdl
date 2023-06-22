@@ -387,18 +387,23 @@ task CreateLeaveOneOutPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.vcf.gz
 
-        bcftools view --no-version --min-alleles 2 --max-alleles 2  ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.bi.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.bi.vcf.gz
-
-        bcftools view --no-version --min-alleles 3  ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
-            bcftools norm --no-version -m- -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz
-
         bcftools norm --no-version -m- ~{output_prefix}.preprocessed.LOO.vcf.gz -Oz | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.split.vcf.gz
+
+        # we need to drop multiallelics before LOO and trimming, otherwise there may be representation issues in the graph
+        bcftools view --no-version --min-alleles 2 --max-alleles 2  ~{input_vcf_gz} -Ou | \
+            bcftools view --no-version -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
+            bcftools view --no-version --min-alleles 2 -Ou | \
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.bi.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LOO.bi.vcf.gz
+
+         bcftools view --no-version --min-alleles 3  ~{input_vcf_gz} -Ou | \
+            bcftools norm --no-version -m- -Ou | \
+            bcftools view --no-version -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
+            bcftools view --no-version --min-alleles 2 -Ou | \
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz
     }
 
     runtime {
