@@ -648,8 +648,6 @@ task CalculateMetrics {
                     is_context_v = panel_callset[f'variants/{context}'][is_case_V]
 
                 for is_multiallelic in [True, False]:
-                    fig, ax = plt.subplots(4, 1, figsize=(12, 16), sharex=True)
-
                     is_allelic_v = is_multiallelic_v if is_multiallelic else ~is_multiallelic_v
                     allelic = 'multiallelic' if is_multiallelic else 'biallelic'
 
@@ -683,11 +681,14 @@ task CalculateMetrics {
                                 'F1': f1
                             })
 
+                    if num_evals.sum() == 0:
+                        continue
+
                     non_sv_enc_gt_n = np.sum(gt_vp[~is_missing_v & ~is_sv_v & is_allelic_v & is_context_v], axis=1)
                     non_sv_panel_enc_gt_n = np.sum(panel_gt_vp[~is_missing_v & ~is_sv_v & is_allelic_v & is_context_v], axis=1)
-                    non_sv_precision = sklearn.metrics.precision_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
-                    non_sv_recall = sklearn.metrics.recall_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
-                    non_sv_f1 = sklearn.metrics.f1_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
+                    non_sv_precision = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.precision_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
+                    non_sv_recall = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.recall_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
+                    non_sv_f1 = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.f1_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
                     non_sv_count = np.sum(~is_sv_v & is_allelic_v & is_context_v)
 
                     sv_enc_gt_n = np.sum(gt_vp[~is_missing_v & is_sv_v & is_allelic_v & is_context_v], axis=1)
@@ -696,6 +697,8 @@ task CalculateMetrics {
                     sv_recall = sklearn.metrics.recall_score(sv_panel_enc_gt_n, sv_enc_gt_n, average='weighted')
                     sv_f1 = sklearn.metrics.f1_score(sv_panel_enc_gt_n, sv_enc_gt_n, average='weighted')
                     sv_count = np.sum(is_sv_v & is_allelic_v & is_context_v)
+
+                    fig, ax = plt.subplots(4, 1, figsize=(12, 16), sharex=True)
 
                     ax[0] = sns.heatmap(num_evals, ax=ax[0], linewidths=1, linecolor='k', annot=True,
                                         norm=matplotlib.colors.LogNorm(), cmap='Blues')
