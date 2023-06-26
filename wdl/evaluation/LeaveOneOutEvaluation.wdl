@@ -133,8 +133,8 @@ workflow LeaveOneOutEvaluation {
             input:
                 case_vcf_gz = KAGEPlusGLIMPSECase.kage_vcf_gz,
                 case_vcf_gz_tbi = KAGEPlusGLIMPSECase.kage_vcf_gz_tbi,
-                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
-                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
+                truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
+                truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
                 label = "KAGE",
                 sample_name = leave_one_out_sample_name,
                 docker = docker,
@@ -146,8 +146,8 @@ workflow LeaveOneOutEvaluation {
             input:
                 case_vcf_gz = KAGEPlusGLIMPSECase.glimpse_vcf_gz,
                 case_vcf_gz_tbi = KAGEPlusGLIMPSECase.glimpse_vcf_gz_tbi,
-                panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
-                panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
+                truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
+                truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
                 label = "KAGE+GLIMPSE",
                 sample_name = leave_one_out_sample_name,
                 docker = docker,
@@ -174,8 +174,8 @@ workflow LeaveOneOutEvaluation {
                 input:
                     case_vcf_gz = PanGenieCase.genotyping_vcf_gz,
                     case_vcf_gz_tbi = PanGenieCase.genotyping_vcf_gz_tbi,
-                    panel_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
-                    panel_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
+                    truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
+                    truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
                     label = "PanGenie",
                     sample_name = leave_one_out_sample_name,
                     docker = docker,
@@ -547,8 +547,8 @@ task CalculateMetrics {
     input {
         File case_vcf_gz        # bi+multi split
         File case_vcf_gz_tbi
-        File panel_vcf_gz       # bi+multi split
-        File panel_vcf_gz_tbi
+        File truth_vcf_gz       # bi+multi split
+        File truth_vcf_gz_tbi
         String label
         String sample_name
 
@@ -572,13 +572,13 @@ task CalculateMetrics {
         bcftools index -t case.split.vcf.gz
 
         # mark case variants in panel
-        bcftools annotate --no-version -a case.split.vcf.gz ~{panel_vcf_gz} -m +CASE -Oz -o panel.annot.vcf.gz
+        bcftools annotate --no-version -a case.split.vcf.gz ~{truth_vcf_gz} -m +CASE -Oz -o panel.annot.vcf.gz
         bcftools index -t panel.annot.vcf.gz
 
         conda install -y seaborn
 
         python - --case_vcf_gz case.split.vcf.gz \
-                 --panel_vcf_gz panel.annot.vcf.gz \
+                 --truth_vcf_gz panel.annot.vcf.gz \
                  --label ~{label} \
                  --sample_name ~{sample_name} \
                  <<-'EOF'
@@ -599,24 +599,29 @@ task CalculateMetrics {
         def get_gt_vsp(callset):
             return allel.GenotypeDaskArray(callset['calldata/GT'])
 
-        def calculate_metrics_and_plot(case_vcf_gz, panel_vcf_gz, label, sample_name):
+        def calculate_metrics_and_plot(case_vcf_gz, truth_vcf_gz, label, sample_name):
             samples = [sample_name]
-            panel_callset = load_callset(panel_vcf_gz, samples=samples, fields='*', alt_number=1)
-            is_case_V = panel_callset['variants/CASE']
-            panel_gt_vp = get_gt_vsp(panel_callset)[is_case_V, 0, :].compute()
 
+            callset = load_callset(case_vcf_gz, samples=samples, fields='*', alt_number=1)
+            gt_vp = get_gt_vsp(callset)[:, 0, :].compute()
 
-            is_snp_v = panel_callset['variants/is_snp'][is_case_V]
-            is_multiallelic_v = panel_callset['variants/MULTIALLELIC'][is_case_V]
+            truth_callset = load_callset(truth_vcf_gz, samples=samples, fields='*', alt_number=1)
+            is_case_V = truth_callset['variants/CASE']
+            truth_gt_vp = get_gt_vsp(truth_callset)[is_case_V, 0, :].compute()
 
-            altfreq_v = panel_callset['variants/AF'][is_case_V]
+            is_any_missing_case_v = np.any(gt_vp == -1, axis=1)
+            is_any_missing_truth_v = np.any(truth_gt_vp == -1, axis=1)
+            is_missing_v = is_any_missing_case_v | is_any_missing_truth_v
+
+            is_snp_v = truth_callset['variants/is_snp'][is_case_V]
+            is_multiallelic_v = truth_callset['variants/MULTIALLELIC'][is_case_V]
+            altfreq_v = truth_callset['variants/AF'][is_case_V]
             is_altfreq_v = [['[0%, 1%)', (0. <= altfreq_v) & (altfreq_v < 0.01)],
                             ['[1%, 5%)', (0.01 <= altfreq_v) & (altfreq_v < 0.05)],
                             ['[5%, 10%)', (0.05 <= altfreq_v) & (altfreq_v < 0.1)],
                             ['[10%, 50%)', (0.1 <= altfreq_v) & (altfreq_v < 0.50)],
                             ['[50%, 100%]', (0.5 <= altfreq_v) & (altfreq_v <= 1.)]]
-
-            altlen_v = panel_callset['variants/altlen'][is_case_V]
+            altlen_v = truth_callset['variants/altlen'][is_case_V]
             is_altlen_v = [['(-inf,-500]', altlen_v <= -500],
                            ['(-500,-50]', (-500 < altlen_v) & (altlen_v <= -50)],
                            ['(-50,-1]', (-50 < altlen_v) & (altlen_v <= -1)],
@@ -626,52 +631,58 @@ task CalculateMetrics {
                            ['[500,5000)', (500 <= altlen_v) & (altlen_v < 5000)],
                            ['[5000,inf)', 10000 <= altlen_v]]
             is_sv_v = (altlen_v <= -50) | (altlen_v >= 50)
-
-            callset = load_callset(case_vcf_gz, samples=samples, fields='*', alt_number=1)
-            gt_vp = get_gt_vsp(callset)[:, 0, :].compute()
-
-            is_missing_v = np.any(gt_vp == -1, axis=1) | np.any(panel_gt_vp == -1, axis=1)
-
-            metrics_dicts = []
-
             num_i = len(is_altfreq_v)
             num_j = len(is_altlen_v)
-            num_evals = np.zeros((num_i, num_j))
-            precisions = np.zeros((num_i, num_j))
-            recalls = np.zeros((num_i, num_j))
-            f1s = np.zeros((num_i, num_j))
+
+            metrics_dicts = []
 
             for context in ['ALL', 'CMRG', 'US', 'RM', 'SD', 'SR']:
 
                 if context == 'ALL':
                     is_context_v = True
                 elif context == 'US':
-                    is_context_v = ~(panel_callset[f'variants/RM'][is_case_V] |
-                                     panel_callset[f'variants/SD'][is_case_V] |
-                                     panel_callset[f'variants/SR'][is_case_V])
+                    is_context_v = ~(truth_callset[f'variants/RM'][is_case_V] |
+                                     truth_callset[f'variants/SD'][is_case_V] |
+                                     truth_callset[f'variants/SR'][is_case_V])
                 else:
-                    is_context_v = panel_callset[f'variants/{context}'][is_case_V]
+                    is_context_v = truth_callset[f'variants/{context}'][is_case_V]
 
                 for is_multiallelic in [True, False]:
+                    num_evals = np.zeros((num_i, num_j))
+                    precisions = np.zeros((num_i, num_j))
+                    recalls = np.zeros((num_i, num_j))
+                    f1s = np.zeros((num_i, num_j))
+                    confusion_matrices = np.zeros((num_i, num_j, 3, 3))
+
                     is_allelic_v = is_multiallelic_v if is_multiallelic else ~is_multiallelic_v
                     allelic = 'multiallelic' if is_multiallelic else 'biallelic'
+
+                    truth_missing_count = (is_any_missing_truth_v & is_allelic_v & is_context_v).sum()
+                    case_missing_count = (is_any_missing_case_v & is_allelic_v & is_context_v).sum()
+                    missing_count = (is_missing_v & is_allelic_v & is_context_v).sum()
 
                     for i, (filter_name_i, is_v_i) in enumerate(is_altfreq_v):
                         for j, (filter_name_j, is_v_j) in enumerate(is_altlen_v):
                             is_eval_v = ~is_missing_v & is_v_i & is_v_j & is_allelic_v & is_context_v
 
-                            enc_gt_n = np.sum(gt_vp[is_eval_v], axis=1)
-                            panel_enc_gt_n = np.sum(panel_gt_vp[is_eval_v], axis=1)
-
                             num_eval = np.sum(is_eval_v)
-                            precision = np.nan if panel_enc_gt_n.size == 0 else sklearn.metrics.precision_score(panel_enc_gt_n, enc_gt_n, average='weighted')
-                            recall = np.nan if panel_enc_gt_n.size == 0 else sklearn.metrics.recall_score(panel_enc_gt_n, enc_gt_n, average='weighted')
-                            f1 = np.nan if panel_enc_gt_n.size == 0 else sklearn.metrics.f1_score(panel_enc_gt_n, enc_gt_n, average='weighted')
+                            enc_gt_n = np.sum(gt_vp[is_eval_v], axis=1)
+                            truth_enc_gt_n = np.sum(truth_gt_vp[is_eval_v], axis=1)
+                            if num_eval == 0:
+                                precision = np.nan
+                                recall = np.nan
+                                f1 = np.nan
+                            else:
+                                precision = sklearn.metrics.precision_score(truth_enc_gt_n, enc_gt_n, average=average)
+                                recall = sklearn.metrics.recall_score(truth_enc_gt_n, enc_gt_n, average=average)
+                                f1 = sklearn.metrics.f1_score(truth_enc_gt_n, enc_gt_n, average=average)
+                            confusion_matrix = sklearn.metrics.confusion_matrix(truth_enc_gt_n, enc_gt_n, labels=[0, 1, 2])
 
                             num_evals[i][j] = num_eval
                             precisions[i][j] = precision
                             recalls[i][j] = recall
                             f1s[i][j] = f1
+                            confusion_matrices[i][j] = confusion_matrix
 
                             metrics_dicts.append({
                                 'LABEL': label,
@@ -683,58 +694,85 @@ task CalculateMetrics {
                                 'NUM_EVAL': num_eval,
                                 'PRECISION': precision,
                                 'RECALL': recall,
-                                'F1': f1
+                                'F1': f1,
+                                'CONFUSION_MATRIX': confusion_matrix
                             })
 
                     if num_evals.sum() == 0:
                         continue
 
                     non_sv_enc_gt_n = np.sum(gt_vp[~is_missing_v & ~is_sv_v & is_allelic_v & is_context_v], axis=1)
-                    non_sv_panel_enc_gt_n = np.sum(panel_gt_vp[~is_missing_v & ~is_sv_v & is_allelic_v & is_context_v], axis=1)
-                    non_sv_precision = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.precision_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
-                    non_sv_recall = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.recall_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
-                    non_sv_f1 = np.nan if non_sv_panel_enc_gt_n.size == 0 else sklearn.metrics.f1_score(non_sv_panel_enc_gt_n, non_sv_enc_gt_n, average='weighted')
+                    non_sv_truth_enc_gt_n = np.sum(truth_gt_vp[~is_missing_v & ~is_sv_v & is_allelic_v & is_context_v], axis=1)
+                    non_sv_precision = np.nan if non_sv_truth_enc_gt_n.size == 0 else sklearn.metrics.precision_score(non_sv_truth_enc_gt_n, non_sv_enc_gt_n, average=average)
+                    non_sv_recall = np.nan if non_sv_truth_enc_gt_n.size == 0 else sklearn.metrics.recall_score(non_sv_truth_enc_gt_n, non_sv_enc_gt_n, average=average)
+                    non_sv_f1 = np.nan if non_sv_truth_enc_gt_n.size == 0 else sklearn.metrics.f1_score(non_sv_truth_enc_gt_n, non_sv_enc_gt_n, average=average)
                     non_sv_count = np.sum(~is_sv_v & is_allelic_v & is_context_v)
 
                     sv_enc_gt_n = np.sum(gt_vp[~is_missing_v & is_sv_v & is_allelic_v & is_context_v], axis=1)
-                    sv_panel_enc_gt_n = np.sum(panel_gt_vp[~is_missing_v & is_sv_v & is_allelic_v & is_context_v], axis=1)
-                    sv_precision = sklearn.metrics.precision_score(sv_panel_enc_gt_n, sv_enc_gt_n, average='weighted')
-                    sv_recall = sklearn.metrics.recall_score(sv_panel_enc_gt_n, sv_enc_gt_n, average='weighted')
-                    sv_f1 = sklearn.metrics.f1_score(sv_panel_enc_gt_n, sv_enc_gt_n, average='weighted')
+                    sv_truth_enc_gt_n = np.sum(truth_gt_vp[~is_missing_v & is_sv_v & is_allelic_v & is_context_v], axis=1)
+                    sv_precision = sklearn.metrics.precision_score(sv_truth_enc_gt_n, sv_enc_gt_n, average=average)
+                    sv_recall = sklearn.metrics.recall_score(sv_truth_enc_gt_n, sv_enc_gt_n, average=average)
+                    sv_f1 = sklearn.metrics.f1_score(sv_truth_enc_gt_n, sv_enc_gt_n, average=average)
                     sv_count = np.sum(is_sv_v & is_allelic_v & is_context_v)
 
-                    fig, ax = plt.subplots(4, 1, figsize=(12, 16), sharex=True)
+        #             fig, ax = plt.subplots(5, 1, figsize=(12, 20))
+                    fig, ax = plt.subplots(4, 1, figsize=(12, 16))
 
                     ax[0] = sns.heatmap(num_evals, ax=ax[0], linewidths=1, linecolor='k', annot=True,
                                         norm=matplotlib.colors.LogNorm(), cmap='Blues')
                     cbar = ax[0].collections[0].colorbar
-                    cbar.ax.set_ylabel('number of variants', rotation=270, labelpad=20)
-                    ax[0].set_title(f'{label}\n{sample_name}\ncontext = {context}, {allelic}\n' +
-                                    f'non-SV allele count = {non_sv_count}, SV allele count = {sv_count}')
+                    cbar.ax.set_ylabel('number of alt alleles', rotation=270, labelpad=20)
+                    ax[0].set_title(f'{label}\n{sample_name}\ncontext = {context}, {allelic}\n\n' +
+                                    f'alt allele count\n' +
+                                    f'non-SV = {non_sv_count}, SV = {sv_count}\n' +
+                                    f'(missing: truth = {truth_missing_count}, case = {case_missing_count}, union = {missing_count})')
+
+        #             diag_mask = np.tile(np.eye(3), (num_i, num_j)).astype(bool)
+        #             ax[1] = sns.heatmap(np.reshape(confusion_matrices, (3 * num_i, 3 * num_j)),
+        #                                 ax=ax[1], linecolor='k',
+        # #                                 norm=matplotlib.colors.LogNorm(),
+        #                                 mask=~diag_mask, cmap='Greens')
+        #             ax[1] = sns.heatmap(np.reshape(confusion_matrices, (3 * num_i, 3 * num_j)),
+        #                                 ax=ax[1], linecolor='k',
+        # #                                 norm=matplotlib.colors.LogNorm(),
+        #                                 mask=diag_mask, cmap='Reds', cbar=False)
+        #             cbar = ax[1].collections[1].colorbar
+        # #             cbar.ax.set_ylabel(f'number of alt alleles', rotation=270, labelpad=40)
+        #             ax[1].set_title(f'normalized confusion matrices')
 
                     ax[1] = sns.heatmap(precisions, ax=ax[1], linewidths=1, linecolor='k', annot=True,
-                                        vmin=0.7, cmap='Greens')
+                                        vmin=0.5, cmap='Greens')
                     cbar = ax[1].collections[0].colorbar
-                    cbar.ax.set_ylabel('precision\n(weighted GC)', rotation=270, labelpad=30)
-                    ax[1].set_title(f'non-SV precision = {non_sv_precision:.4f}\nSV precision = {sv_precision:.4f}')
+                    cbar.ax.set_ylabel(f'precision ({average})', rotation=270, labelpad=20)
+                    ax[1].set_title(f'precision ({average})\n' +
+                                    f'non-SV = {non_sv_precision:.4f}, SV = {sv_precision:.4f}')
 
                     ax[2] = sns.heatmap(recalls, ax=ax[2], linewidths=1, linecolor='k', annot=True,
-                                        vmin=0.7, cmap='Greens')
+                                        vmin=0.5, cmap='Greens')
                     cbar = ax[2].collections[0].colorbar
-                    cbar.ax.set_ylabel('recall\n(weighted GC)', rotation=270, labelpad=30)
-                    ax[2].set_title(f'non-SV recall = {non_sv_recall:.4f}\nSV recall = {sv_recall:.4f}')
+                    cbar.ax.set_ylabel(f'recall ({average})', rotation=270, labelpad=20)
+                    ax[2].set_title(f'recall ({average})\n' +
+                                    f'non-SV = {non_sv_recall:.4f}, SV = {sv_recall:.4f}')
 
                     ax[3] = sns.heatmap(f1s, ax=ax[3], linewidths=1, linecolor='k', annot=True,
-                                        vmin=0.7, cmap='Greens')
+                                        vmin=0.5, cmap='Greens')
                     cbar = ax[3].collections[0].colorbar
-                    cbar.ax.set_ylabel('F1\n(weighted GC)', rotation=270, labelpad=30)
-                    ax[3].set_title(f'non-SV F1 = {non_sv_f1:.4f}\nSV F1 = {sv_f1:.4f}')
+                    cbar.ax.set_ylabel(f'F1 ({average})', rotation=270, labelpad=20)
+                    ax[3].set_title(f'F1 ({average})\n' +
+                                    f'non-SV = {non_sv_f1:.4f}, SV = {sv_f1:.4f}')
 
+                    for i, a in enumerate(ax):
+                        a.set_ylabel('AF')
+                        a.tick_params(bottom=False, left=False)
+                        a.set_xticklabels([])
+        #                 if i != 1:
+                        a.set_yticklabels([filter_name for filter_name, _ in is_altfreq_v], rotation=0)
+        #                 else:
+        #                     a.set_yticklabels(sum([[None, filter_name, None]
+        #                                            for filter_name, _ in is_altfreq_v], []),
+        #                                       rotation=0)
                     ax[3].set_xlabel('ALT length - REF length (bp)')
                     ax[3].set_xticklabels([filter_name for filter_name, _ in is_altlen_v], rotation=0)
-                    for a in ax:
-                        a.set_ylabel('AF')
-                        a.set_yticklabels([filter_name for filter_name, _ in is_altfreq_v], rotation=0)
 
                     plt.savefig(f'{sample_name}.{context}.{allelic}.{label}.metrics.png')
                     plt.show()
@@ -748,7 +786,7 @@ task CalculateMetrics {
             parser.add_argument('--case_vcf_gz',
                                 type=str)
 
-            parser.add_argument('--panel_vcf_gz',
+            parser.add_argument('--truth_vcf_gz',
                                 type=str)
 
             parser.add_argument('--label',
@@ -760,7 +798,7 @@ task CalculateMetrics {
             args = parser.parse_args()
 
             calculate_metrics_and_plot(args.case_vcf_gz,
-                                       args.panel_vcf_gz,
+                                       args.truth_vcf_gz,
                                        args.label,
                                        args.sample_name)
 
