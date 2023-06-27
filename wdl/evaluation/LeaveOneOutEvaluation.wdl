@@ -599,7 +599,7 @@ task CalculateMetrics {
         def get_gt_vsp(callset):
             return allel.GenotypeDaskArray(callset['calldata/GT'])
 
-        def calculate_metrics_and_plot(case_vcf_gz, truth_vcf_gz, label, sample_name):
+        def calculate_metrics_and_plot(case_vcf_gz, truth_vcf_gz, label, sample_name, average='macro'):
             samples = [sample_name]
 
             callset = load_callset(case_vcf_gz, samples=samples, fields='*', alt_number=1)
