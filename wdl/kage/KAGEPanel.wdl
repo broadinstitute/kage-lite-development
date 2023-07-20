@@ -28,6 +28,7 @@ workflow KAGEPanel {
         RuntimeAttributes? runtime_attributes
         RuntimeAttributes? medium_runtime_attributes
         RuntimeAttributes? large_runtime_attributes
+        Int? cpu_make_count_model
     }
 
     call MakeSitesOnlyVcfAndNumpyVariants {
@@ -85,7 +86,7 @@ workflow KAGEPanel {
                 output_prefix = output_prefix,
                 docker = docker,
                 monitoring_script = monitoring_script,
-                runtime_attributes = runtime_attributes
+                runtime_attributes = medium_runtime_attributes
         }
     }
 
@@ -115,7 +116,7 @@ workflow KAGEPanel {
             output_prefix = output_prefix,
             docker = docker,
             monitoring_script = monitoring_script,
-            runtime_attributes = runtime_attributes
+            runtime_attributes = medium_runtime_attributes
     }
 
     call MakeHelperModel {
@@ -124,7 +125,7 @@ workflow KAGEPanel {
         variant_to_nodes = MergeChromosomeVariantToNodes.variant_to_nodes,
         output_prefix = output_prefix,
         docker = docker,
-        runtime_attributes = runtime_attributes
+        runtime_attributes = medium_runtime_attributes
     }
 
     scatter (i in range(length(chromosomes))) {
@@ -236,7 +237,8 @@ workflow KAGEPanel {
             output_prefix = output_prefix,
             docker = docker,
             monitoring_script = monitoring_script,
-            runtime_attributes = large_runtime_attributes
+            runtime_attributes = large_runtime_attributes,
+            cpu = cpu_make_count_model
     }
 
     call RefineCountModel {
@@ -1079,6 +1081,7 @@ task MakeCountModel {
         File? monitoring_script
 
         RuntimeAttributes runtime_attributes = {}
+        Int? cpu = 8
     }
 
     command {
@@ -1102,7 +1105,7 @@ task MakeCountModel {
 
     runtime {
         docker: docker
-        cpu: select_first([runtime_attributes.cpu, 8])
+        cpu: select_first([runtime_attributes.cpu, cpu])
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
