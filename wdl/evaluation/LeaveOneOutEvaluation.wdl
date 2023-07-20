@@ -647,15 +647,19 @@ task CalculateMetrics {
                 else:
                     is_context_v = truth_callset[f'variants/{context}'][is_case_V]
 
-                for is_multiallelic in [True, False]:
+                for allelic in ['biallelic+multiallelic', 'multiallelic', 'biallelic']:
                     num_evals = np.zeros((num_i, num_j))
                     precisions = np.zeros((num_i, num_j))
                     recalls = np.zeros((num_i, num_j))
                     f1s = np.zeros((num_i, num_j))
                     confusion_matrices = np.zeros((num_i, num_j, 3, 3))
 
-                    is_allelic_v = is_multiallelic_v if is_multiallelic else ~is_multiallelic_v
-                    allelic = 'multiallelic' if is_multiallelic else 'biallelic'
+                    if allelic == 'biallelic+multiallelic':
+                        is_allelic_v = True
+                    elif allelic == 'multiallelic':
+                        is_allelic_v = is_multiallelic_v
+                    else:
+                        is_allelic_v = ~is_multiallelic_v
 
                     truth_missing_count = (is_any_missing_truth_v & is_allelic_v & is_context_v).sum()
                     case_missing_count = (is_any_missing_case_v & is_allelic_v & is_context_v).sum()
@@ -688,7 +692,7 @@ task CalculateMetrics {
                                 'LABEL': label,
                                 'SAMPLE_NAME': sample_name,
                                 'CONTEXT': context,
-                                'MULTIALLELIC': is_multiallelic,
+                                'ALLELIC': allelic,
                                 'ALTFREQ': filter_name_i,
                                 'ALTLEN': filter_name_j,
                                 'NUM_EVAL': num_eval,
@@ -779,6 +783,7 @@ task CalculateMetrics {
 
             metrics_df = pd.DataFrame.from_dict(metrics_dicts)
             metrics_df.to_csv(f'{sample_name}.{label}.metrics.tsv', sep='\t', index=False)
+
 
         def main():
             parser = argparse.ArgumentParser()
