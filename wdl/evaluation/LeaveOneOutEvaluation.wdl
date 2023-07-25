@@ -568,11 +568,13 @@ task CalculateMetrics {
         fi
 
         # split multiallelics in case (may be redundant)
-        bcftools norm --no-version -m- ~{case_vcf_gz} -Oz -o case.split.vcf.gz
+        bcftools norm --no-version -m- ~{case_vcf_gz} -Ou | \
+            bcftools sort -Oz -o case.split.vcf.gz
         bcftools index -t case.split.vcf.gz
 
         # mark case variants in panel
-        bcftools annotate --no-version -a case.split.vcf.gz ~{truth_vcf_gz} -m +CASE -Oz -o panel.annot.vcf.gz
+        bcftools annotate --no-version -a case.split.vcf.gz -m +CASE ~{truth_vcf_gz} -Ou | \
+            bcftools sort -Oz -o panel.annot.vcf.gz
         bcftools index -t panel.annot.vcf.gz
 
         conda install -y seaborn

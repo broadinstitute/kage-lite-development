@@ -248,7 +248,7 @@ workflow KAGEPanel {
             output_prefix = output_prefix,
             docker = docker,
             monitoring_script = monitoring_script,
-            runtime_attributes = runtime_attributes
+            runtime_attributes = medium_runtime_attributes
     }
 
     call FindTrickyVariants {
@@ -259,7 +259,7 @@ workflow KAGEPanel {
             output_prefix = output_prefix,
             docker = docker,
             monitoring_script = monitoring_script,
-            runtime_attributes = runtime_attributes
+            runtime_attributes = medium_runtime_attributes
     }
 
     call MakeIndexBundle {
@@ -1084,6 +1084,8 @@ task MakeCountModel {
         Int? cpu = 8
     }
 
+    Int cpu_resolved = select_first([runtime_attributes.cpu, cpu])
+
     command {
         set -e
 
@@ -1093,10 +1095,8 @@ task MakeCountModel {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        NUM_THREADS=$(nproc)
-
         kage sample_node_counts_from_population \
-            -t $NUM_THREADS \
+            -t ~{cpu_resolved} \
             -g ~{graph} \
             -H ~{haplotype_to_nodes} \
             -i ~{kmer_index_only_variants_with_revcomp} \
@@ -1105,7 +1105,7 @@ task MakeCountModel {
 
     runtime {
         docker: docker
-        cpu: select_first([runtime_attributes.cpu, cpu])
+        cpu: cpu_resolved
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
         disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
