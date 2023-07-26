@@ -6,7 +6,7 @@
   "LeaveOneOutEvaluation.gatk_docker": "broadinstitute/gatk:4.4.0.0",
   "LeaveOneOutEvaluation.input_vcf_gz": "../resources/20200825_pav-all-samples-freeze3-final.chr1-1Mbp-chr2-1Mbp.vcf.gz",
   "LeaveOneOutEvaluation.input_vcf_gz_tbi": "../resources/20200825_pav-all-samples-freeze3-final.chr1-1Mbp-chr2-1Mbp.vcf.gz.tbi",
-  "LeaveOneOutEvaluation.KAGEPlusGLIMPSECase.average_coverage": "30",
+  "LeaveOneOutEvaluation.KAGECase.average_coverage": "30",
   "LeaveOneOutEvaluation.kage_docker": "kage-lite/kage-lite-testing",
   "LeaveOneOutEvaluation.leave_one_out_crams": [
     "../resources/HG00171.final.chr1-1Mbp-chr2-1Mbp.cram",

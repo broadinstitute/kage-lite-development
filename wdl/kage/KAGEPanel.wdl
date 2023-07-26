@@ -125,6 +125,7 @@ workflow KAGEPanel {
         variant_to_nodes = MergeChromosomeVariantToNodes.variant_to_nodes,
         output_prefix = output_prefix,
         docker = docker,
+        monitoring_script = monitoring_script,
         runtime_attributes = medium_runtime_attributes
     }
 
@@ -325,10 +326,10 @@ task MakeSitesOnlyVcfAndNumpyVariants {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File sites_only_vcf_gz = "~{output_prefix}.sites.vcf.gz"
         File sites_only_vcf_gz_tbi = "~{output_prefix}.sites.vcf.gz.tbi"
         File numpy_variants = "~{output_prefix}.numpy_variants.pkl"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -371,8 +372,8 @@ task MakeChromosomeGenotypeMatrix {
     }
 
     output {
-        File chromosome_genotype_matrix = "~{output_prefix}.~{chromosome}.genotype_matrix.pkl"
         File monitoring_log = "monitoring.log"
+        File chromosome_genotype_matrix = "~{output_prefix}.~{chromosome}.genotype_matrix.pkl"
     }
 }
 
@@ -426,9 +427,9 @@ task MakeChromosomeGraph {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File chromosome_graph = "~{output_prefix}.~{chromosome}.obgraph.pkl"
         File chromosome_position_id_index = "~{output_prefix}.~{chromosome}.position_id_index.pkl"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -472,9 +473,9 @@ task MergeChromosomeGraphs {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File graph = "~{output_prefix}.obgraph.pkl"
         File position_id_index = "~{output_prefix}.position_id_index.pkl"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -525,8 +526,8 @@ task MakeChromosomeVariantToNodes {
     }
 
     output {
-        File chromosome_variant_to_nodes = "~{output_prefix}.~{chromosome}.variant_to_nodes.pkl"
         File monitoring_log = "monitoring.log"
+        File chromosome_variant_to_nodes = "~{output_prefix}.~{chromosome}.variant_to_nodes.pkl"
     }
 }
 
@@ -576,9 +577,9 @@ task MakeHelperModel {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File helper_model = "~{output_prefix}.helper_model.pkl"
         File helper_model_combo_matrix = "~{output_prefix}.helper_model_combo_matrix.pkl"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -639,8 +640,8 @@ task SampleChromosomeKmersFromLinearReference {
     }
 
     output {
-        File chromosome_linear_kmers = "~{output_prefix}.~{chromosome}.linear_kmers.pkl"
         File monitoring_log = "monitoring.log"
+        File chromosome_linear_kmers = "~{output_prefix}.~{chromosome}.linear_kmers.pkl"
     }
 }
 
@@ -681,8 +682,8 @@ task MakeLinearReferenceKmerCounter {
     }
 
     output {
-        File linear_kmers_counter = "~{output_prefix}.linear_kmers_counter.pkl"
         File monitoring_log = "monitoring.log"
+        File linear_kmers_counter = "~{output_prefix}.linear_kmers_counter.pkl"
     }
 }
 
@@ -749,8 +750,8 @@ task GetChromosomeShortVariantKmers {
     }
 
     output {
-        File chromosome_short_variant_kmers = "~{output_prefix}.~{chromosome}.short_variant_kmers.pkl"
         File monitoring_log = "monitoring.log"
+        File chromosome_short_variant_kmers = "~{output_prefix}.~{chromosome}.short_variant_kmers.pkl"
     }
 }
 
@@ -797,8 +798,8 @@ task SampleChromosomeStructuralVariantKmers {
     }
 
     output {
-        File chromosome_structural_variant_kmers = "~{output_prefix}.~{chromosome}.structural_variant_kmers.pkl"
         File monitoring_log = "monitoring.log"
+        File chromosome_structural_variant_kmers = "~{output_prefix}.~{chromosome}.structural_variant_kmers.pkl"
     }
 }
 
@@ -843,9 +844,9 @@ task MakeChromosomeHaplotypeToNodes {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File chromosome_haplotype_to_nodes = "~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl"
         File chromosome_haplotype_nodes = "~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl.haplotype_nodes"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -889,8 +890,8 @@ task MergeFlatKmers {
     }
 
     output {
-        File merged_kmers = "~{output_prefix}.pkl"
         File monitoring_log = "monitoring.log"
+        File merged_kmers = "~{output_prefix}.pkl"
     }
 }
 
@@ -930,9 +931,9 @@ task MergeChromosomeVariantToNodes {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File variant_to_nodes = "~{output_prefix}.variant_to_nodes.pkl"
         File num_nodes = "~{output_prefix}.num_nodes.pkl"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -975,9 +976,9 @@ task MergeChromosomeHaplotypeToNodes {
     }
 
     output {
+        File monitoring_log = "monitoring.log"
         File haplotype_to_nodes = "~{output_prefix}.haplotype_to_nodes.pkl"
         File haplotype_nodes = "~{output_prefix}.haplotype_to_nodes.pkl.haplotype_nodes"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -1017,8 +1018,8 @@ task MakeReverseVariantKmerIndex {
     }
 
     output {
-        File reverse_variant_kmers = "~{output_prefix}.reverse_variant_kmers.pkl"
         File monitoring_log = "monitoring.log"
+        File reverse_variant_kmers = "~{output_prefix}.reverse_variant_kmers.pkl"
     }
 }
 
@@ -1064,8 +1065,8 @@ task MakeVariantKmerIndexWithReverseComplements {
     }
 
     output {
-        File kmer_index_only_variants_with_revcomp = "~{output_prefix}.kmer_index_only_variants_with_revcomp.pkl"
         File monitoring_log = "monitoring.log"
+        File kmer_index_only_variants_with_revcomp = "~{output_prefix}.kmer_index_only_variants_with_revcomp.pkl"
     }
 }
 
@@ -1114,8 +1115,8 @@ task MakeCountModel {
     }
 
     output {
-        File sampling_count_model = "~{output_prefix}.sampling_count_model.pkl"
         File monitoring_log = "monitoring.log"
+        File sampling_count_model = "~{output_prefix}.sampling_count_model.pkl"
     }
 }
 
@@ -1157,8 +1158,8 @@ task RefineCountModel {
     }
 
     output {
-        File refined_sampling_count_model = "~{output_prefix}.refined_sampling_count_model.pkl"
         File monitoring_log = "monitoring.log"
+        File refined_sampling_count_model = "~{output_prefix}.refined_sampling_count_model.pkl"
     }
 }
 
@@ -1204,8 +1205,8 @@ task FindTrickyVariants {
     }
 
     output {
-        File tricky_variants = "~{output_prefix}.tricky_variants.pkl"
         File monitoring_log = "monitoring.log"
+        File tricky_variants = "~{output_prefix}.tricky_variants.pkl"
     }
 }
 
@@ -1257,7 +1258,7 @@ task MakeIndexBundle {
     }
 
     output {
-        File index = "~{output_prefix}.index.pkl"
         File monitoring_log = "monitoring.log"
+        File index = "~{output_prefix}.index.pkl"
     }
 }
