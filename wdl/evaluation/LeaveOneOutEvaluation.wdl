@@ -562,7 +562,7 @@ task GLIMPSECaseChromosome {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        bcftools view --no-version -r ~{chromosome} ~{output_prefix}.kage.vcf.gz | \
+        bcftools view --no-version -r ~{chromosome} ~{kage_vcf_gz} | \
             sed -e 's/nan/-1000000.0/g' | sed -e 's/-inf/-1000000.0/g' | sed -e 's/inf/-1000000.0/g' | bgzip > ~{output_prefix}.kage.nonan.~{chromosome}.vcf.gz
         bcftools index -t ~{output_prefix}.kage.nonan.~{chromosome}.vcf.gz
 
