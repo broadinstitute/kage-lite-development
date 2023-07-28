@@ -411,7 +411,7 @@ task CreateLeaveOneOutPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.vcf.gz
 
-        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.LOO.vcf.gz -Oz | \
+        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.split.vcf.gz
 
