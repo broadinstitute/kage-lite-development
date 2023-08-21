@@ -21,6 +21,7 @@ workflow LeaveOneOutEvaluation {
         File reference_fasta
         File reference_fasta_fai
         File reference_dict
+        Array[File] genetic_maps
         File repeat_mask_bed
         File segmental_duplications_bed
         File simple_repeats_bed
@@ -134,6 +135,7 @@ workflow LeaveOneOutEvaluation {
                     panel_split_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_split_vcf_gz_tbi,
                     reference_fasta_fai = reference_fasta_fai,
                     chromosome = chromosomes[j],
+                    genetic_map = genetic_maps[j],
                     output_prefix = leave_one_out_sample_name,
                     docker = kage_docker,
                     monitoring_script = monitoring_script
@@ -330,7 +332,6 @@ task PreprocessCaseReads {
         File input_cram_idx
         File reference_fasta
         File reference_fasta_fai
-        File reference_dict
         Array[String] chromosomes
         String output_prefix
 
@@ -354,18 +355,11 @@ task PreprocessCaseReads {
         # hacky way to get chromosomes into bed file
         grep -P '~{sep="\\t|" chromosomes}\t' ~{reference_fasta_fai} | cut -f 1,2 | sed -e 's/\t/\t1\t/g' > chromosomes.bed
 
-        # subset cram to chromosomes
-        gatk PrintReads \
-            -L chromosomes.bed \
-            -I ~{input_cram} \
-            --read-index ~{input_cram_idx} \
-            -R ~{reference_fasta} \
-            --disable-sequence-dictionary-validation \
-            -O ~{output_prefix}.bam
-
         # filter out read pairs containing N nucleotides
         # TODO move functionality into KAGE code
-        samtools fasta ~{output_prefix}.bam | sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
+        samtools view --reference ~{reference_fasta} -@ $(nproc) -L chromosomes.bed -u ~{input_cram} | \
+            samtools fasta --reference ~{reference_fasta} -@ $(nproc) | \
+            sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
     }
 
     runtime {
@@ -463,12 +457,15 @@ task KAGECase {
         File reference_fasta_fai
         String output_prefix
         String sample_name
-        Int average_coverage
+        Float average_coverage
 
         String docker
         File? monitoring_script
 
         String kmer_mapper_args = "-c 100000000"
+        Boolean? ignore_helper_model = true
+        String? kage_genotype_extra_args
+
 
         RuntimeAttributes runtime_attributes = {}
         Int? cpu = 8
@@ -497,7 +494,8 @@ task KAGECase {
             -c ~{output_prefix}.kmer_counts.npy \
             --average-coverage ~{average_coverage} \
             -s ~{sample_name} \
-            -I true \
+            -I ~{ignore_helper_model} \
+            ~{kage_genotype_extra_args} \
             -o ~{output_prefix}.kage.bi.vcf
 
         # we need to add split multiallelics to biallelic-only KAGE VCF
@@ -545,6 +543,7 @@ task GLIMPSECaseChromosome {
         File panel_split_vcf_gz_tbi
         File reference_fasta_fai
         String chromosome
+        File genetic_map
         String output_prefix
 
         String docker
@@ -576,6 +575,7 @@ task GLIMPSECaseChromosome {
             -R ~{panel_split_vcf_gz} \
             --input-region ~{chromosome}:1-$CHROMOSOME_LENGTH \
             --output-region ~{chromosome}:1-$CHROMOSOME_LENGTH \
+            --map ~{genetic_map} \
             --input-GL \
             --thread $(nproc) \
             --output ~{output_prefix}.kage.glimpse.~{chromosome}.vcf.gz
