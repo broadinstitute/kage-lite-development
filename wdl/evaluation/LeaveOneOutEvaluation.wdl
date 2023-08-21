@@ -81,7 +81,6 @@ workflow LeaveOneOutEvaluation {
                 input_cram_idx = IndexCaseReads.cram_idx,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
-                reference_dict = reference_dict,
                 output_prefix = leave_one_out_sample_name,
                 chromosomes = chromosomes,
                 docker = gatk_docker,
