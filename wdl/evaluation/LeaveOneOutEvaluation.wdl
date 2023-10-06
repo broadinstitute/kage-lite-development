@@ -20,7 +20,6 @@ workflow LeaveOneOutEvaluation {
         File input_vcf_gz_tbi
         File reference_fasta
         File reference_fasta_fai
-        File reference_dict
         Array[File] genetic_maps
         File repeat_mask_bed
         File segmental_duplications_bed
@@ -35,7 +34,6 @@ workflow LeaveOneOutEvaluation {
         Array[File] leave_one_out_crams
 
         String docker
-        String gatk_docker
         String kage_docker
         String pangenie_docker
         File? monitoring_script
@@ -83,7 +81,7 @@ workflow LeaveOneOutEvaluation {
                 reference_fasta_fai = reference_fasta_fai,
                 output_prefix = leave_one_out_sample_name,
                 chromosomes = chromosomes,
-                docker = gatk_docker,
+                docker = docker,
                 monitoring_script = monitoring_script
         }
 
@@ -493,7 +491,7 @@ task KAGECase {
             -c ~{output_prefix}.kmer_counts.npy \
             --average-coverage ~{average_coverage} \
             -s ~{sample_name} \
-            -I ~{ignore_helper_model} \
+            ~{true='-I' false='' ignore_helper_model} \
             ~{kage_genotype_extra_args} \
             -o ~{output_prefix}.kage.bi.vcf
 

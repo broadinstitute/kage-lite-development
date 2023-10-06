@@ -22,7 +22,6 @@ workflow KAGECase {
         File panel_multi_split_vcf_gz_tbi
         File reference_fasta
         File reference_fasta_fai
-        File reference_dict
         Array[String] chromosomes
         Boolean subset_reads = true
         String sample_name
@@ -49,7 +48,6 @@ workflow KAGECase {
                 input_cram_idx = IndexCaseReads.cram_idx,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
-                reference_dict = reference_dict,
                 output_prefix = sample_name,
                 chromosomes = chromosomes,
                 docker = docker,
@@ -65,7 +63,6 @@ workflow KAGECase {
                 input_cram_idx = IndexCaseReads.cram_idx,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
-                reference_dict = reference_dict,
                 output_prefix = sample_name,
                 docker = kage_docker,
                 monitoring_script = monitoring_script
@@ -164,7 +161,6 @@ task PreprocessCaseReads {
         File input_cram_idx
         File reference_fasta
         File reference_fasta_fai
-        File reference_dict
         Array[String] chromosomes
         String output_prefix
 
@@ -217,7 +213,6 @@ task PreprocessCaseReadsWithoutSubsetting {
         File input_cram_idx
         File reference_fasta
         File reference_fasta_fai
-        File reference_dict
         String output_prefix
 
         String docker
@@ -305,7 +300,7 @@ task KAGECase {
             -c ~{output_prefix}.kmer_counts.npy \
             --average-coverage ~{average_coverage} \
             -s ~{sample_name} \
-            -I ~{ignore_helper_model} \
+            ~{true='-I' false='' ignore_helper_model} \
             ~{kage_genotype_extra_args} \
             -o ~{output_prefix}.kage.bi.vcf
 
