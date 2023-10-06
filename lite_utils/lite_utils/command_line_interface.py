@@ -143,7 +143,7 @@ def run_argument_parser(args):
         from graph_kmer_index.flat_kmers import FlatKmers
 
         num_nodes = from_file(args.num_nodes) if args.num_nodes is not None else None
-        chromosome_lengths = np.loadtxt(args.reference_fasta_fai, dtype=np.str)[:, 1].astype(np.int64) if args.reference_fasta_fai is not None else None
+        chromosome_lengths = np.atleast_2d(np.loadtxt(args.reference_fasta_fai, dtype=str))[:, 1].astype(np.int64) if args.reference_fasta_fai is not None else None
 
         hashes = []
         nodes = []
