@@ -595,7 +595,7 @@ def run_argument_parser(args):
     subparser = subparsers.add_parser("count_kmers")
     subparser.add_argument("-f", "--flat-kmers", required=True, type=FlatKmers.from_file)
     subparser.add_argument("-o", "--out-file-name", required=True)
-    subparser.add_argument("-m", "--modulo", required=False, type=int, default=200000033)
+    subparser.add_argument("-m", "--modulo", required=False, type=int, default=0)
     subparser.add_argument("-s", "--subsample-ratio", required=False, type=int, default=1, help="1 to keep every kmer, 2 for every other etc")
     subparser.set_defaults(func=count_kmers)
 
