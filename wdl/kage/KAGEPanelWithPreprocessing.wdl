@@ -322,6 +322,7 @@ task PreprocessPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.joined.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.joined.vcf.gz
 
+        # TODO check whether dropping AF=0 alleles here has any effect
         bcftools view --no-version ~{output_prefix}.joined.vcf.gz --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz -- -t AF,AC,AN

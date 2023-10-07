@@ -16,6 +16,39 @@ from .util import log_memory_usage_now
 from .util import phased_genotype_matrix_to_haplotype_matrix
 
 
+class DiscBackedRaggedArray:
+    def __init__(self, file_name, offsets, lengths):
+        self._file_name = file_name
+        self._offsets = offsets
+        self._lengths = lengths
+
+    def __getitem__(self, row: int):
+        assert isinstance(row, int)
+        out = np.fromfile(self._file_name,
+                          offset=self._offsets[row] * 8,  # *8 because bytes
+                          count=self._lengths[row],
+                          dtype=np.int64)
+        return out
+
+    @classmethod
+    def from_iter(cls, file_name, data):
+        with open(file_name, "wb") as out_file:
+
+            offsets = []
+            lengths = []
+            offset = 0
+
+            for row_data in data:
+                assert row_data.dtype == np.int64
+                offsets.append(offset)
+                length = len(row_data)
+                lengths.append(length)
+                offset += length
+                row_data.tofile(out_file)
+
+            return cls(file_name, np.array(offsets, dtype=np.uint32), np.array(lengths, dtype=np.uint32))
+
+
 class GenotypeToNodes:
     def __init__(self):
         # Could this just be a map from genotype to two haplotypes?
@@ -27,31 +60,24 @@ class GenotypeToNodes:
 
 
 class DiscBackedHaplotypeToNodes:
-    def __init__(self, file_name, offsets, lengths):
-        self._file_name = file_name
-        self._offsets = offsets
-        self._lengths = lengths
+    def __init__(self, data: DiscBackedRaggedArray):
+        self.data = data
 
     def n_haplotypes(self):
-        return len(self._offsets)
+        return len(self.data._offsets)
 
     def get_nodes(self, haplotype):
-        t = time.perf_counter()
-        out = np.fromfile(self._file_name,
-                           offset=self._offsets[haplotype]*8,  # *8 because bytes
-                           count=self._lengths[haplotype],
-                           dtype=np.int64)
-        logging.info("Took %.4f sec to read haplotype nodes from disc" % (time.perf_counter()-t)) 
-        return out
+        return self.data[haplotype]
 
     def __getitem__(self, item):
-        return self.get_nodes(item)
+        return self.data[item]
 
 
     @classmethod
     def from_file(cls, file_name):
         o = from_file(file_name)
-        o._file_name = file_name + ".haplotype_nodes"
+        # hack with file name to get relative path correct
+        o.data._file_name = file_name + ".haplotype_nodes"
         return o
 
     def to_file(self, file_name):
@@ -59,33 +85,24 @@ class DiscBackedHaplotypeToNodes:
 
     @classmethod
     def from_phased_genotype_matrix(cls, genotype_matrix, variant_to_nodes, out_file_name):
-        out_file_name = out_file_name + ".haplotype_nodes"
-        out_file = open(out_file_name, "ab+")
-
-        offsets = []
-        lengths = []
-        offset = 0
 
         n_variants = genotype_matrix.shape[0]
         logging.info("%d variants" % n_variants)
 
-        for individual in range(genotype_matrix.shape[1]):
-            logging.info("Individual %d/%d" % (individual, genotype_matrix.shape[1]))
-            has_variant = phased_genotype_matrix_to_haplotype_matrix(genotype_matrix[:,individual].reshape(n_variants, 1))
-            assert has_variant.shape[1] == 2
-            for haplotype in [0, 1]:
-                offsets.append(offset)
-                has_node = np.nonzero(has_variant[:, haplotype])[0]
-                nodes = variant_to_nodes.var_nodes[has_node].astype(np.int64)
-                length = len(nodes)
-                logging.info("%d nodes" % length)
-                lengths.append(length)
-                offset += length
-                out_file.write(nodes)
+        def get_nodes():
+            for individual in range(genotype_matrix.shape[1]):
+                has_variant = phased_genotype_matrix_to_haplotype_matrix(
+                    genotype_matrix[:, individual].reshape(n_variants, 1))
+                assert has_variant.shape[1] == 2
+                for haplotype in [0, 1]:
+                    has_node = np.nonzero(has_variant[:, haplotype])[0]
+                    nodes = variant_to_nodes.var_nodes[has_node].astype(np.int64)
+                    assert np.max(nodes) <= np.max(variant_to_nodes.var_nodes)
+                    assert nodes.dtype == np.int64
+                    yield nodes
 
-        out_file.close()
-
-        return cls(out_file_name, np.array(offsets, dtype=np.uint32), np.array(lengths, dtype=np.uint32))
+        ra = DiscBackedRaggedArray.from_iter(out_file_name + ".haplotype_nodes", (nodes for nodes in get_nodes()))
+        return cls(ra)
 
 
 class HaplotypeToNodesRagged:

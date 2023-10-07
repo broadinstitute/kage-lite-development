@@ -99,7 +99,7 @@ def run_argument_parser(args):
     subparser.set_defaults(func=merge_chromosome_variant_to_nodes)
 
     def merge_chromosome_haplotype_to_nodes(args):
-        from obgraph.haplotype_nodes import DiscBackedHaplotypeToNodes
+        from obgraph.haplotype_nodes import DiscBackedHaplotypeToNodes, DiscBackedRaggedArray
 
         num_nodes_per_chromosome = from_file(args.num_nodes)
         num_chromosomes = len(num_nodes_per_chromosome)
@@ -130,7 +130,7 @@ def run_argument_parser(args):
 
         haplotype_nodes_out_file.close()
 
-        haplotype_to_nodes = DiscBackedHaplotypeToNodes(haplotype_nodes_out_file_name, np.array(offsets, dtype=np.uint32), np.array(lengths, dtype=np.uint32))
+        haplotype_to_nodes = DiscBackedHaplotypeToNodes(DiscBackedRaggedArray(haplotype_nodes_out_file_name, np.array(offsets, dtype=np.uint32), np.array(lengths, dtype=np.uint32)))
         haplotype_to_nodes.to_file(out_file_name)
 
     subparser = subparsers.add_parser("merge_chromosome_haplotype_to_nodes")
