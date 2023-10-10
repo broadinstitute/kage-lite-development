@@ -69,7 +69,7 @@ def run_argument_parser(args):
 
         matrix.to_file(args.out_file_name)
 
-    subparser = subparsers.add_parser("merge_genotype_matrices")
+    subparser = subparsers.add_parser("merge_genotype_matrices_and_convert_to_unphased")
     subparser.add_argument("-g", "--genotype-matrices", nargs='+', required=True)
     subparser.add_argument("-o", "--out-file-name", required=True)
     subparser.set_defaults(func=merge_genotype_matrices_and_convert_to_unphased)
