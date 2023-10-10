@@ -64,8 +64,8 @@ def run_argument_parser(args):
         matrix = GenotypeMatrix(np.concatenate(genotype_matrices).transpose())
 
         # phased (hom ref = 0, het = 1 or 2, hom alt = 3) to unphased (hom ref = 0, het = 1, hom alt = 2)
-        matrix[matrix == 2] = 1
-        matrix[matrix == 3] = 2
+        matrix.matrix[matrix.matrix == 2] = 1
+        matrix.matrix[matrix.matrix == 3] = 2
 
         matrix.to_file(args.out_file_name)
 
