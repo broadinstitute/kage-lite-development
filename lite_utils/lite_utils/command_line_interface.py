@@ -57,17 +57,22 @@ def run_argument_parser(args):
     subparser.add_argument("-o", "--out-file-name", required=True)
     subparser.set_defaults(func=make_genotype_matrix)
 
-    def merge_genotype_matrices(args):
+    def merge_genotype_matrices_and_convert_to_unphased(args):
         from obgraph.genotype_matrix import GenotypeMatrix
 
         genotype_matrices = [from_file(file).matrix for file in args.genotype_matrices]
         matrix = GenotypeMatrix(np.concatenate(genotype_matrices).transpose())
+
+        # phased (hom ref = 0, het = 1 or 2, hom alt = 3) to unphased (hom ref = 0, het = 1, hom alt = 2)
+        matrix[matrix == 2] = 1
+        matrix[matrix == 3] = 2
+
         matrix.to_file(args.out_file_name)
 
     subparser = subparsers.add_parser("merge_genotype_matrices")
     subparser.add_argument("-g", "--genotype-matrices", nargs='+', required=True)
     subparser.add_argument("-o", "--out-file-name", required=True)
-    subparser.set_defaults(func=merge_genotype_matrices)
+    subparser.set_defaults(func=merge_genotype_matrices_and_convert_to_unphased)
 
     def merge_chromosome_variant_to_nodes(args):
         from obgraph.variant_to_nodes import VariantToNodes

@@ -640,7 +640,7 @@ task MakeHelperModel {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        lite_utils merge_genotype_matrices \
+        lite_utils merge_genotype_matrices_and_convert_to_unphased \
             -g ~{sep=" " chromosome_genotype_matrices} \
             -o ~{output_prefix}.genotype_matrix.pkl
 
