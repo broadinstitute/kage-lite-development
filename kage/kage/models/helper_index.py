@@ -25,7 +25,7 @@ def create_helper_model_single_thread(data):
         GenotypeMatrix, "genotype_matrix" + args.shared_memory_unique_id
     )
 
-    # read genotype matrix etc from shared memory
+    # read genotype matrix etc. from shared memory
     # submatrix = GenotypeMatrix(genotype_matrix.matrix[from_variant:to_variant,:])
     submatrix = GenotypeMatrix(
         genotype_matrix.matrix[

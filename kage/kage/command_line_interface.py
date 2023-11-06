@@ -120,7 +120,6 @@ def run_argument_parser(args):
         help="Set to True to use only population allele frequencies as priors.")
     subparser.add_argument("-l", "--limit-model-counts", default=0, type=int, help="If larger than 0, model will ignore counts larger than this. Can be used to use lower memory, but will make model less accurate.")
     subparser.add_argument("-I", "--ignore-helper-model", required=False, type=bool, default=False)
-    subparser.add_argument("-V", "--ignore-helper-variants", required=False, type=bool, default=False)
     subparser.add_argument("-b", "--ignore-homo-ref", required=False, type=bool, default=False, help="Set to True to not write homo ref variants to output vcf")
     subparser.add_argument("-B", "--do-not-write-genotype-likelihoods", required=False, type=bool, default=False, help="Set to True to not write genotype likelihoods to output vcf")
     subparser.add_argument("-d", "--debug", type=bool, default=False)
