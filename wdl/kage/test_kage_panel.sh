@@ -16,7 +16,7 @@ KMER_INDEX=$(jq -r '.outputs."KAGEPanelWithPreprocessing.kmer_index_only_variant
 cp $INDEX $OUTPUT_DIR
 cp $KMER_INDEX $OUTPUT_DIR
 
-# run kmer mapping and genotyping (w/o helper model)
+# run kmer mapping and genotyping (w/ helper model)
 docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
   kmer_mapper map -d True -c 100000000 \
                   -i /kage-lite/test/$(basename $KMER_INDEX) \
@@ -25,7 +25,7 @@ docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
 
 docker run --shm-size 4G -v $(readlink -m $OUTPUT_DIR):/kage-lite/test $DOCKER \
   kage genotype -s HG00731 \
-                -I true \
+                -I false \
                 --average-coverage 30 \
                 -i /kage-lite/test/$(basename $INDEX) \
                 -c /kage-lite/test/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.kmer_counts.npy \
