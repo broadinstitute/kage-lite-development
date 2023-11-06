@@ -51,8 +51,8 @@ class CombinationModelGenotyper:
         log_memory_usage_now("Genotyping, before getting observed counts")
 
         # Get observed counts
-        observed_ref_nodes = self._node_counts.get_node_count_array()[ref_nodes]
-        observed_alt_nodes = self._node_counts.get_node_count_array()[alt_nodes]
+        observed_ref_nodes = self._node_counts[ref_nodes]
+        observed_alt_nodes = self._node_counts[alt_nodes]
 
         # One model for ref nodes and one for alt nodes
         logging.info("Creating combomodels")

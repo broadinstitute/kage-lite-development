@@ -21,34 +21,6 @@ class TrickyVariants:
         to_file(self, file_name)
 
 
-def find_variants_with_nonunique_kmers(args):
-    output = np.zeros(len(args.variant_to_nodes.ref_nodes), dtype=np.uint8)
-    n_filtered = 0
-    n_sharing_kmers = 0
-
-    for i, (ref_node, var_node) in enumerate(zip(args.variant_to_nodes.ref_nodes, args.variant_to_nodes.var_nodes)):
-        reference_kmers = args.reverse_kmer_index.get_node_kmers(ref_node)
-        variant_kmers = args.reverse_kmer_index.get_node_kmers(var_node)
-
-        if i % 1000 == 0:
-            logging.info("%d variants processed, %d filtered, %d sharing kmers" % (i, n_filtered, n_sharing_kmers))
-
-        frequencies_ref = np.array([args.population_kmer_index.get_frequency(k) - 1 for k in reference_kmers])
-        frequencies_var = np.array([args.population_kmer_index.get_frequency(k) - 1 for k in variant_kmers])
-        # print(frequencies_ref, frequencies_var)
-        # if sum(frequencies_ref) > 0 or sum(frequencies_var) > 0:
-        if np.all(frequencies_ref > 0) or np.all(frequencies_var > 0):
-            n_filtered += 1
-            output[i] = 1
-        elif len(set(reference_kmers).intersection(variant_kmers)) > 0:
-            n_sharing_kmers += 1
-            output[i] = 1
-
-    TrickyVariants(output).to_file(args.out_file_name)
-    # np.save(args.out_file_name, output)
-    logging.info("Saved array with variants to %s" % args.out_file_name)
-
-
 def find_tricky_variants(args):
     variant_to_nodes = VariantToNodes.from_file(args.variant_to_nodes)
     # model = GenotypeNodeCountModel.from_file(args.node_count_model)

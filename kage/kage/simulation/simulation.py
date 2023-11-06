@@ -10,14 +10,13 @@ from kage.models.helper_model import (
     make_helper_model_from_genotype_matrix, HelperVariants, CombinationMatrix,
 )
 from kage.models.mapping_model import LimitedFrequencySamplingComboModel
-from kage.node_counts import NodeCounts
 from obgraph.genotype_matrix import MostSimilarVariantLookup
 from obgraph.genotype_matrix import GenotypeMatrix
 from obgraph.variant_to_nodes import VariantToNodes
 from obgraph.variants import VcfVariant, VcfVariants
 
 
-def run_genotyper_on_simualated_data(
+def run_genotyper_on_simulated_data(
     genotyper,
     n_variants,
     n_individuals,
@@ -147,7 +146,7 @@ class GenotypingDataSimulator:
 
         return (
             self._variants,
-            NodeCounts(self._node_counts),
+            self._node_counts,
             self._model,
             most_simliar_variant_lookup,
             variant_to_nodes,
@@ -267,8 +266,8 @@ class GenotypingDataSimulator:
 
         # make model
         self._model = [
-            LimitedFrequencySamplingComboModel.create_naive(self._n_variants).as_sparse(),
-            LimitedFrequencySamplingComboModel.create_naive(self._n_variants).as_sparse()
+            LimitedFrequencySamplingComboModel.create_naive(self._n_variants),
+            LimitedFrequencySamplingComboModel.create_naive(self._n_variants)
             ]
             #from .node_count_model import NodeCountModelAdvanced
 

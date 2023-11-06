@@ -11,23 +11,16 @@ logging.basicConfig(
 import argparse, time, random
 from kage.models.helper_index import create_helper_model
 from .configuration import GenotypingConfig
-from kage.models.mapping_model import sample_node_counts_from_population_cli, refine_sampling_model, make_sparse_count_model
+from kage.models.mapping_model import sample_node_counts_from_population_cli, refine_sampling_model
 from shared_memory_wrapper import (
     remove_shared_memory_in_session,
     get_shared_pool,
     close_shared_pool, )
 from shared_memory_wrapper.shared_memory import remove_all_shared_memory
-from graph_kmer_index.collision_free_kmer_index import CollisionFreeKmerIndex
-from graph_kmer_index.reverse_kmer_index import ReverseKmerIndex
-from kage.analysis.analysis import analyse_variants
 import numpy as np
-from .node_counts import NodeCounts
-from obgraph.variant_to_nodes import VariantToNodes
-from .indexing.tricky_variants import find_variants_with_nonunique_kmers, find_tricky_variants
+from .indexing.tricky_variants import find_tricky_variants
 from .indexing.index_bundle import IndexBundle
 from .genotyping.combination_model_genotyper import CombinationModelGenotyper
-from kmer_mapper.command_line_interface import map_bnp
-from argparse import Namespace
 from obgraph.numpy_variants import NumpyVariants
 
 np.random.seed(1)
@@ -37,15 +30,6 @@ np.set_printoptions(suppress=True)
 
 def main():
     run_argument_parser(sys.argv[1:])
-
-
-def get_kmer_counts(kmer_index, k, reads_file_name, n_threads, gpu=False):
-    logging.info("Will count kmers.")
-    # temp hack to call kmer_mapper by using the command line interface
-    return NodeCounts(map_bnp(Namespace(
-        kmer_size=k, kmer_index=kmer_index, reads=reads_file_name, n_threads=n_threads, gpu=gpu, debug=False,
-        chunk_size=10000000, map_reverse_complements=True if gpu else False, func=None, output_file=None
-    )))
 
 
 def genotype(args):
@@ -63,17 +47,7 @@ def genotype(args):
     logging.debug("Reading indexes took %.3f sec" % (time.perf_counter()-t))
     config = GenotypingConfig.from_command_line_args(args)
 
-
-    if args.counts is None:
-        kmer_index = index.kmer_index
-        if args.kmer_index is not None:
-            logging.info("Not using index from index bundle, but instead using %s" % args.kmer_index)
-            kmer_index = CollisionFreeKmerIndex.from_file(args.kmer_index)
-        # map with kmer_mapper to get node counts
-        assert args.reads is not None, "--reads must be specified if not node_counts is specified"
-        node_counts = get_kmer_counts(kmer_index, args.kmer_size, args.reads, config.n_threads, args.gpu)
-    else:
-        node_counts = NodeCounts.from_file(args.counts)
+    node_counts = np.load(args.counts)
 
     max_variant_id = len(index.variant_to_nodes.ref_nodes) - 1
     logging.info("Max variant id is assumed to be %d" % max_variant_id)
@@ -108,7 +82,7 @@ def genotype(args):
         numpy_genotypes,
         add_header_lines=vcf_pl_and_gl_header_lines(),
         ignore_homo_ref=config.ignore_homo_ref,
-        add_genotype_likelyhoods=probs if not config.do_not_write_genotype_likelihoods else None,
+        add_genotype_likelihoods=probs if not config.do_not_write_genotype_likelihoods else None,
     )
     logging.info("Writing to vcf took %.3f sec" % (time.perf_counter() - t))
 
@@ -152,31 +126,15 @@ def run_argument_parser(args):
     subparser.add_argument("-d", "--debug", type=bool, default=False)
     subparser.set_defaults(func=genotype)
 
-    subparser = subparsers.add_parser("analyse_variants")
-    subparser.add_argument("-g", "--variant-nodes", required=True)
-    subparser.add_argument("-i", "--kmer-index", required=True)
-    subparser.add_argument("-k", "--kmer-size", required=True, type=int)
-    subparser.add_argument("-R", "--reverse-index", required=True)
-    subparser.add_argument("-v", "--vcf", required=True, help="Vcf to genotype")
-    subparser.add_argument("-P", "--predicted-vcf", required=True)
-    subparser.add_argument("-T", "--truth-vcf", required=True)
-    subparser.add_argument("-t", "--truth-regions-file", required=True)
-    subparser.add_argument("-n", "--node-counts", required=True)
-    subparser.add_argument("-m", "--model", required=True)
-    subparser.add_argument("-f", "--helper-variants", required=True)
-    subparser.add_argument("-F", "--combination-matrix", required=True)
-    subparser.add_argument("-p", "--probs", required=True)
-    subparser.add_argument("-c", "--count_probs", required=True)
-    subparser.set_defaults(func=analyse_variants)
 
     def run_tests(args):
-        from kage.simulation.simulation import run_genotyper_on_simualated_data
+        from kage.simulation.simulation import run_genotyper_on_simulated_data
 
         np.random.seed(args.random_seed)
         random.seed(args.random_seed)
         genotyper = globals()[args.genotyper]
 
-        run_genotyper_on_simualated_data(
+        run_genotyper_on_simulated_data(
             genotyper,
             args.n_variants,
             args.n_individuals,
@@ -257,68 +215,11 @@ def run_argument_parser(args):
     subparser.set_defaults(func=find_tricky_variants)
 
 
-    subparser = subparsers.add_parser("find_variants_with_nonunique_kmers")
-    subparser.add_argument("-v", "--variant-to-nodes", required=True, type=VariantToNodes.from_file)
-    subparser.add_argument("-r", "--reverse-kmer-index", required=True, type=ReverseKmerIndex.from_file)
-    subparser.add_argument("-i", "--population-kmer-index", required=True, type=CollisionFreeKmerIndex.from_file)
-    subparser.add_argument("-o", "--out-file-name", required=True)
-    subparser.set_defaults(func=find_variants_with_nonunique_kmers)
-
-
     def remove_shared_memory_command_line(args):
         remove_all_shared_memory()
 
     subparser = subparsers.add_parser("free_memory")
     subparser.set_defaults(func=remove_shared_memory_command_line)
-
-    def filter_variants(args):
-        from obgraph.variants import VcfVariant
-
-        f = open(args.vcf)
-        n_snps_filtered = 0
-        n_indels_filtered = 0
-        for line in f:
-            if line.startswith("#"):
-                print(line.strip())
-                continue
-
-            variant = VcfVariant.from_vcf_line(line)
-            if args.skip_snps and variant.type == "SNP":
-                n_snps_filtered += 1
-                continue
-
-            if variant.type == "DELETION" or variant.type == "INSERTION":
-                if variant.length() < args.minimum_indel_length:
-                    n_indels_filtered += 1
-                    continue
-
-            print(line.strip())
-
-        logging.info("%d snps filtered" % n_snps_filtered)
-        logging.info("%d indels filtered" % n_indels_filtered)
-
-    subparser = subparsers.add_parser("filter_variants")
-    subparser.add_argument("-v", "--vcf", required=True, help="Vcf to filter")
-    subparser.add_argument(
-        "-l", "--minimum-indel-length", required=False, type=int, default=0
-    )
-    subparser.add_argument(
-        "-s", "--skip-snps", required=False, type=bool, default=False
-    )
-    subparser.set_defaults(func=filter_variants)
-
-
-
-    def filter_vcf(args):
-        from .variant_filtering import remove_overlapping_indels
-        remove_overlapping_indels(args.vcf_file_name)
-
-
-    subparser = subparsers.add_parser("remove_overlapping_indels")
-    subparser.add_argument("-v", "--vcf-file-name", required=True)
-    subparser.set_defaults(func=filter_vcf)
-
-
 
 
     subparser = subparsers.add_parser("create_helper_model")
@@ -372,12 +273,6 @@ def run_argument_parser(args):
     subparser.add_argument("-v", "--variant-to-nodes", required=True)
     subparser.add_argument("-o", "--out-file-name", required=True)
     subparser.set_defaults(func=refine_sampling_model)
-
-    subparser = subparsers.add_parser("make_sparse_count_model")
-    subparser.add_argument("-s", "--count_model", required=True)
-    subparser.add_argument("-o", "--out-file-name", required=True)
-    subparser.set_defaults(func=make_sparse_count_model)
-
 
     if len(args) == 0:
         parser.print_help()
