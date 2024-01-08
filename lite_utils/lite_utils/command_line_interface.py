@@ -126,7 +126,6 @@ def run_argument_parser(args):
             length = 0
             for c in range(num_chromosomes):
                 nodes = DiscBackedHaplotypeToNodes.from_file(args.haplotype_to_nodes[c]).get_nodes(h) + int(np.sum(num_nodes_per_chromosome[:c]))
-                print(nodes)
                 haplotype_nodes_out_file.write(nodes.astype(np.int64))
                 length += len(nodes)
             logging.info("%d nodes" % length)

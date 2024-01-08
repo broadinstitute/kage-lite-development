@@ -3,7 +3,9 @@ import pytest
 from obgraph.graph import Graph
 from obgraph.haplotype_nodes import HaplotypeToNodes
 from kage.models.mapping_model import get_sampled_nodes_and_counts
-from graph_kmer_index import KmerIndex, FlatKmers, sequence_to_kmer_hash
+from graph_kmer_index.collision_free_kmer_index import CollisionFreeKmerIndex
+from graph_kmer_index.flat_kmers import FlatKmers
+from graph_kmer_index.snp_kmer_finder import sequence_to_kmer_hash
 import numpy as np
 from shared_memory_wrapper import free_memory_in_session
 
@@ -30,7 +32,7 @@ def haplotype_to_nodes():
 
 @pytest.fixture
 def kmer_index():
-    kmer_index = KmerIndex.from_flat_kmers(
+    kmer_index = CollisionFreeKmerIndex.from_flat_kmers(
         FlatKmers(
             np.array([
                 sequence_to_kmer_hash("TTT"),
