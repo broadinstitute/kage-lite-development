@@ -280,7 +280,7 @@ workflow KAGEPanelWithPreprocessing {
             numpy_variants = MakeSitesOnlyVcfAndNumpyVariants.numpy_variants,
             refined_sampling_count_model = RefineCountModel.refined_sampling_count_model,
             tricky_variants = FindTrickyVariants.tricky_variants,
-            helper_variants = MakeHelperModel.helper_model,
+            helper_model = MakeHelperModel.helper_model,
             helper_model_combo_matrix = MakeHelperModel.helper_model_combo_matrix,
             kmer_index_only_variants_with_revcomp = MakeVariantKmerIndexWithReverseComplements.kmer_index_only_variants_with_revcomp,
             output_prefix = output_prefix,
@@ -898,7 +898,6 @@ task MakeChromosomeHaplotypeToNodes {
 
         String docker
         File? monitoring_script
-        Int? kmer_length = 31
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -1302,7 +1301,7 @@ task MakeIndexBundle {
         File numpy_variants
         File refined_sampling_count_model
         File tricky_variants
-        File helper_variants
+        File helper_model
         File helper_model_combo_matrix
         File kmer_index_only_variants_with_revcomp
         String output_prefix
@@ -1327,7 +1326,7 @@ task MakeIndexBundle {
             -v ~{numpy_variants} \
             -A ~{refined_sampling_count_model} \
             -x ~{tricky_variants} \
-            -f ~{helper_variants} \
+            -f ~{helper_model} \
             -F ~{helper_model_combo_matrix} \
             -i ~{kmer_index_only_variants_with_revcomp} \
             -o ~{output_prefix}.index.pkl
