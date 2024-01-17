@@ -82,7 +82,7 @@ def genotype(args):
         numpy_genotypes,
         add_header_lines=vcf_pl_and_gl_header_lines(),
         ignore_homo_ref=config.ignore_homo_ref,
-        add_genotype_likelihoods=probs if not config.do_not_write_genotype_likelihoods else None,
+        add_genotype_likelihoods=probs,
     )
     logging.info("Writing to vcf took %.3f sec" % (time.perf_counter() - t))
 

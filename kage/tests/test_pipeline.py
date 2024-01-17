@@ -3,6 +3,7 @@ import obgraph.command_line_interface as obgraph_cli
 import graph_kmer_index.command_line_interface as graph_kmer_index_cli
 import kage.command_line_interface as kage_cli
 import lite_utils.command_line_interface as lite_utils_cli
+import kmer_mapper.kmer_mapper.command_line_interface as kmer_mapper_cli
 
 test_resources_dir = 'resources'
 output_dir = '/tmp'
@@ -318,3 +319,32 @@ def test_MakeIndexBundle():
         '-F', helper_model_combo_matrix,
         '-i', kmer_index_only_variants_with_revcomp,
         '-o', output])
+
+@pytest.mark.parametrize("num_threads", [1, 2])
+def test_Case(num_threads):
+    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/Case/inputs/test.kmer_index_only_variants_with_revcomp.pkl'
+    index = f'{test_resources_dir}/Case/inputs/test.index.pkl'
+    fasta = f'{test_resources_dir}/Case/inputs/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.fasta'
+    num_threads = str(num_threads)
+    chunk_size = '100000000'
+    sample_name = 'HG00731'
+    average_coverage = '30'
+    ignore_helper_model = 'false'
+    output_kmer_counts = f'{output_dir}/HG00731.kmer_counts.npy'
+    output_vcf = f'{output_dir}/HG00731.vcf'
+
+    kmer_mapper_cli.run_argument_parser([
+        'map',
+        '-t', num_threads,
+        '-c', chunk_size,
+        '-i', kmer_index_only_variants_with_revcomp,
+        '-f', fasta,
+        '-o', output_kmer_counts])
+    kage_cli.run_argument_parser([
+        'genotype',
+        '-c', output_kmer_counts,
+        '-i', index,
+        '-s', sample_name,
+        '--average-coverage', average_coverage,
+        '-I', ignore_helper_model,
+        '-o', output_vcf])
