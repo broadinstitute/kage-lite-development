@@ -1,3 +1,4 @@
+import pytest
 import obgraph.command_line_interface as obgraph_cli
 import graph_kmer_index.command_line_interface as graph_kmer_index_cli
 import kage.command_line_interface as kage_cli
@@ -115,12 +116,13 @@ def test_MergeChromosomeHaplotypeToNodes():
         '--num-nodes', num_nodes,
         '--output-prefix', output_prefix])
 
-def test_MakeHelperModel():
+@pytest.mark.parametrize("num_threads", [2]) # single thread has a bug
+def test_MakeHelperModel(num_threads):
     chr1_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/inputs/test.chr1.genotype_matrix.pkl'
     chr2_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/inputs/test.chr2.genotype_matrix.pkl'
     variant_to_nodes = f'{test_resources_dir}/MakeHelperModel/inputs/test.variant_to_nodes.pkl'
     window_size = '100'
-    num_threads = '2'  # TODO single thread has bug?
+    num_threads = str(num_threads)
     output_genotype_matrix = f'{output_dir}/test.genotype_matrix.pkl'
     output_helper_model = f'{output_dir}/test.helper_model.pkl'
 
@@ -136,9 +138,10 @@ def test_MakeHelperModel():
         '-t', num_threads,
         '-o', output_helper_model])
 
-def test_SampleChromosomeKmersFromLinearReference():
+@pytest.mark.parametrize("num_threads", [1, 2])
+def test_SampleChromosomeKmersFromLinearReference(num_threads):
     chromosome_reference_fasta = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/inputs/chromosome.fa'
-    num_threads = '1'
+    num_threads = str(num_threads)
     spacing = '1'
     kmer_length = '31'
     include_reverse_complement = 'True'
@@ -182,14 +185,15 @@ def test_MakeLinearReferenceKmerCounter():
         '-f', linear_kmers,
         '-o', output])
 
-def test_GetChromosomeShortVariantKmers():
+@pytest.mark.parametrize("num_threads", [1, 2])
+def test_GetChromosomeShortVariantKmers(num_threads):
         graph = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.obgraph.pkl'
         position_id_index = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.position_id_index.pkl'
         variant_to_nodes = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.variant_to_nodes.pkl'
         linear_kmers_counter = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.linear_kmers_counter.pkl'
         vcf_gz = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/chr1.sites.vcf.gz'
         use_dense_kmer_finder = 'True'
-        num_threads = '1'
+        num_threads = str(num_threads)
         kmer_length = '31'
         chunk_size = '20000'
         max_variant_nodes = '3'
@@ -252,11 +256,12 @@ def test_MakeVariantKmerIndexWithReverseComplements():
         '--skip-frequencies', skip_frequences,
         '-o', output])
 
-def test_MakeCountModel():
+@pytest.mark.parametrize("num_threads", [1, 2])
+def test_MakeCountModel(num_threads):
     graph = f'{test_resources_dir}/MakeCountModel/inputs/test.obgraph.pkl'
     haplotype_to_nodes = f'{test_resources_dir}/MakeCountModel/inputs/test.haplotype_to_nodes.pkl'
     kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/MakeCountModel/inputs/test.kmer_index_only_variants_with_revcomp.pkl'
-    num_threads = '1'
+    num_threads = str(num_threads)
     output = f'{output_dir}/test.sampling_count_model.pkl'
 
     kage_cli.run_argument_parser([
@@ -313,25 +318,3 @@ def test_MakeIndexBundle():
         '-F', helper_model_combo_matrix,
         '-i', kmer_index_only_variants_with_revcomp,
         '-o', output])
-
-
-test_MakeSitesOnlyVcfAndNumpyVariants()
-test_MakeChromosomeGenotypeMatrix()
-test_MakeChromosomeGraph()
-test_MakeChromosomeVariantToNodes()
-test_MakeChromosomeHaplotypeToNodes()
-test_MergeChromosomeGraphs()
-test_MergeChromosomeVariantToNodes()
-test_MergeChromosomeHaplotypeToNodes()
-test_MakeHelperModel()
-test_SampleChromosomeKmersFromLinearReference()
-test_MergeFlatKmers()
-test_MakeLinearReferenceKmerCounter()
-test_GetChromosomeShortVariantKmers()
-test_SampleChromosomeStructuralVariantKmers()
-test_MakeReverseVariantKmerIndex()
-test_MakeVariantKmerIndexWithReverseComplements()
-test_MakeCountModel()
-test_RefineCountModel()
-test_FindTrickyVariants()
-test_MakeIndexBundle()
