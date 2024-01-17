@@ -3,7 +3,7 @@ import obgraph.command_line_interface as obgraph_cli
 import graph_kmer_index.command_line_interface as graph_kmer_index_cli
 import kage.command_line_interface as kage_cli
 import lite_utils.command_line_interface as lite_utils_cli
-import kmer_mapper.kmer_mapper.command_line_interface as kmer_mapper_cli
+import kmer_mapper.command_line_interface as kmer_mapper_cli
 
 test_resources_dir = 'resources'
 output_dir = '/tmp'
