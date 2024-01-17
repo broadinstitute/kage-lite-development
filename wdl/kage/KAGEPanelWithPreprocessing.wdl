@@ -912,7 +912,6 @@ task MakeChromosomeHaplotypeToNodes {
         fi
 
         obgraph make_haplotype_to_nodes_bnp \
-            -d true \
             -g ~{chromosome_variant_to_nodes} \
             -v ~{chromosome_genotype_matrix} \
             -o ~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl

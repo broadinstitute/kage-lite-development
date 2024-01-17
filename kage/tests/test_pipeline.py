@@ -75,7 +75,6 @@ def test_MakeChromosomeHaplotypeToNodes():
 
         obgraph_cli.run_argument_parser([
             'make_haplotype_to_nodes_bnp',
-            '-d', 'True',
             '-g', variant_to_nodes,
             '-v', genotype_matrix,
             '-o', output])

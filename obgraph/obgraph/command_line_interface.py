@@ -70,18 +70,13 @@ def run_argument_parser(args):
 
 
     def make_haplotype_to_nodes_bnp(args):
-        from .haplotype_nodes import make_ragged_haplotype_to_nodes
         phased_genotype_matrix = from_file(args.phased_genotype_matrix).matrix
         variant_to_nodes = VariantToNodes.from_file(args.variant_to_nodes)
 
-        if args.make_disc_backed:
-            from .haplotype_nodes import DiscBackedHaplotypeToNodes
-            logging.info("Making disc backed")
-            result = DiscBackedHaplotypeToNodes.from_phased_genotype_matrix(phased_genotype_matrix, variant_to_nodes, args.out_file_name)
-            result.to_file(args.out_file_name)
-        else:
-            result = make_ragged_haplotype_to_nodes(variant_to_nodes, phased_genotype_matrix, args.n_threads)
-            to_file(result, args.out_file_name)
+        from .haplotype_nodes import DiscBackedHaplotypeToNodes
+        logging.info("Making disc backed")
+        result = DiscBackedHaplotypeToNodes.from_phased_genotype_matrix(phased_genotype_matrix, variant_to_nodes, args.out_file_name)
+        result.to_file(args.out_file_name)
 
     subparser = subparsers.add_parser("make_haplotype_to_nodes_bnp")
     subparser.add_argument("-g", "--variant-to-nodes", required=True)
@@ -89,7 +84,6 @@ def run_argument_parser(args):
     subparser.add_argument("-o", "--out_file_name", required=True)
     subparser.add_argument("-t", "--n-threads", type=int, default=8, required=False)
     subparser.add_argument("-n", "--n-haplotypes", type=int, required=False)
-    subparser.add_argument("-d", "--make-disc-backed", type=bool, required=False, default=False, help="Uses less memory")
     subparser.set_defaults(func=make_haplotype_to_nodes_bnp)
 
 
