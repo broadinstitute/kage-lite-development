@@ -24,29 +24,23 @@ def run_argument_parser(args):
         formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=50, width=100))
 
     def make(args):
-        if args.vcf is not None:
-            logging.info("Will create from vcf file")
-            reference = Fasta(args.reference_fasta_file)
+        logging.info("Will create from vcf file")
+        reference = Fasta(args.reference_fasta_file)
 
-            chromosome = args.chromosome
+        chromosome = args.chromosome
 
-            ref_sequence = str(reference[args.chromosome])
-            logging.info("Extracted sequence for chromosome %s. Length is: %d" % (chromosome, len(ref_sequence)))
-            variants = VcfVariants.from_vcf(args.vcf, limit_to_chromosome=chromosome)
-            logging.info("There are %d variants in chromosome" % len(variants))
+        ref_sequence = str(reference[args.chromosome])
+        logging.info("Extracted sequence for chromosome %s. Length is: %d" % (chromosome, len(ref_sequence)))
+        variants = VcfVariants.from_vcf(args.vcf, limit_to_chromosome=chromosome)
+        logging.info("There are %d variants in chromosome" % len(variants))
 
-            constructor = GraphConstructor(ref_sequence, variants)
-            graph = constructor.get_graph_with_dummy_nodes()
-            graph.to_file(args.out_file_name)
-        else:
-            logging.info("Will create from files %s" % args.vg_json_files)
-            graph = Graph.from_vg_json_files(args.vg_json_files)
-            graph.to_file(args.out_file_name)
+        constructor = GraphConstructor(ref_sequence, variants)
+        graph = constructor.get_graph_with_dummy_nodes()
+        graph.to_file(args.out_file_name)
 
     subparsers = parser.add_subparsers()
     subparser = subparsers.add_parser("make")
     subparser.add_argument("-o", "--out_file_name", required=True)
-    subparser.add_argument("-j", "--vg-json-files", nargs='+', required=False)
     subparser.add_argument("-v", "--vcf", required=False)
     subparser.add_argument("-r", "--reference_fasta_file", required=False)
     subparser.add_argument("-c", "--chromosome", required=False)
