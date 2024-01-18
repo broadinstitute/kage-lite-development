@@ -1,20 +1,9 @@
-from .object_traversal import replace_object_attributes_recursively
-from .shared_memory import array_to_shared_memory, array_from_shared_memory, random_name
-from .shared_memory import TMP_FILES_IN_SESSION, SHARED_MEMORIES_IN_SESSION
-import numpy as np
-import pickle
-import logging
 import dill
+import numpy as np
 
-
-def pickle_object(object, name):
-    with open(name, "wb") as f:
-        pickle.dump(object, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-def unpickle_object(name):
-    with open(name, "rb") as f:
-        return pickle.load(f)
+from .object_traversal import replace_object_attributes_recursively
+from .shared_memory import TMP_FILES_IN_SESSION, SHARED_MEMORIES_IN_SESSION
+from .shared_memory import array_to_shared_memory, array_from_shared_memory, random_name
 
 
 class ObjectWrapper:
@@ -35,14 +24,7 @@ class DataBundle:
         self._np_arrays = {}
 
     def save(self):
-        if self._backend == "file" or self._backend == "compressed_file":
-            # save object and np_arrays to file
-            func = np.savez
-            if self._backend == "compressed_file":
-                func = np.savez_compressed
-            d = {**{"object": ObjectWrapper(self._object)}, **self._np_arrays}
-            func(self._file_name, **d, allow_pickle=True)
-        elif self._backend == "shared_array" or self._backend == "python":
+        if self._backend == "shared_array" or self._backend == "python":
             # save object to file, np arrays to shared memory
             np.savez(self._file_name, object=ObjectWrapper(self._object), allow_pickle=True)
             for name, array in self._np_arrays.items():
@@ -51,7 +33,7 @@ class DataBundle:
             TMP_FILES_IN_SESSION.append(self._file_name)
             SHARED_MEMORIES_IN_SESSION.append(self._file_name)
         else:
-            assert False
+            raise NotImplementedError
 
 
     def add_np_array(self, array, key):
@@ -108,8 +90,6 @@ def object_from_shared_memory(base_name, backend="shared_array"):
 
 
 def from_file(name):
-    if not name.endswith(".pkl"):
-        name = name + ".pkl"
     with open(name, 'rb') as f:
         return dill.load(f)
 

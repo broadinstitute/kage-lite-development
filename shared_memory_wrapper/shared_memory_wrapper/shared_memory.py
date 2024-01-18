@@ -1,17 +1,15 @@
-import random
-import pickle
-import time
 import inspect
-import os
-import SharedArray as sa
 import logging
-import numpy as np
-from itertools import repeat
-from pathos.multiprocessing import Pool
-import inspect
-#from . import python_shared_memory
+import os
+import pickle
+import random
+import time
 from collections import OrderedDict
-#from . import posix_shared_memory
+from itertools import repeat
+
+import SharedArray as sa
+import numpy as np
+from pathos.multiprocessing import Pool
 
 SHARED_MEMORIES_IN_SESSION = []
 TMP_FILES_IN_SESSION = []
