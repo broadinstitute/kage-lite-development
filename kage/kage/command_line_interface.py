@@ -21,7 +21,6 @@ import numpy as np
 from .indexing.tricky_variants import find_tricky_variants
 from .indexing.index_bundle import IndexBundle
 from .genotyping.combination_model_genotyper import CombinationModelGenotyper
-from obgraph.numpy_variants import NumpyVariants
 
 np.random.seed(1)
 np.seterr(all="ignore")
@@ -67,13 +66,7 @@ def genotype(args):
     if args.debug:
         _write_genotype_debug_data(genotypes, numpy_genotypes, args.out_file_name, index.variant_to_nodes, probs, count_probs)
 
-    if args.variants is not None:
-        delattr(index, "index")  # release some memory
-        t = time.perf_counter()
-        numpy_variants = NumpyVariants.from_file(args.variants)
-        logging.info("Reading numpy variants took %.3f sec" % (time.perf_counter()-t))
-    else:
-        numpy_variants = index.numpy_variants
+    numpy_variants = index.numpy_variants
 
     t = time.perf_counter()
     numpy_variants.to_vcf_with_genotypes(
@@ -109,7 +102,6 @@ def run_argument_parser(args):
     subparser.add_argument("-g", "--gpu", required=False, type=bool, default=False)
     subparser.add_argument("-i", "--index-bundle", required=True)
     subparser.add_argument("-m", "--kmer-index", required=False, help="Can be specified to override kmer index in index bundle for mapping.")
-    subparser.add_argument("-v", "--variants", required=False, help="Can be used to specify variants as NumPy file if not part of index bundle")
     subparser.add_argument("-o", "--out-file-name", required=True, help="Will write genotyped variants to this file")
     subparser.add_argument("-t", "--n-threads", type=int, required=False, default=8)
     subparser.add_argument("-a", "--average-coverage", type=float, default=15, help="Expected average read coverage", )
@@ -126,91 +118,13 @@ def run_argument_parser(args):
     subparser.set_defaults(func=genotype)
 
 
-    def run_tests(args):
-        from kage.simulation.simulation import run_genotyper_on_simulated_data
-
-        np.random.seed(args.random_seed)
-        random.seed(args.random_seed)
-        genotyper = globals()[args.genotyper]
-
-        run_genotyper_on_simulated_data(
-            genotyper,
-            args.n_variants,
-            args.n_individuals,
-            args.average_coverage,
-            args.coverage_std,
-            args.duplication_rate,
-        )
-
-    subparser = subparsers.add_parser("test")
-    subparser.add_argument(
-        "-g",
-        "--genotyper",
-        required=False,
-        default="CombinationModelGenotyper",
-        help="Classname of genotyper",
-    )
-    subparser.add_argument(
-        "-n",
-        "--n_variants",
-        required=False,
-        type=int,
-        default=100,
-        help="Number of variants to test on",
-    )
-    subparser.add_argument(
-        "-i",
-        "--n_individuals",
-        required=False,
-        type=int,
-        default=50,
-        help="Number of individuals",
-    )
-    subparser.add_argument(
-        "-r", "--random_seed", required=False, type=int, default=1, help="Random seed"
-    )
-    subparser.add_argument(
-        "-c",
-        "--average_coverage",
-        required=False,
-        type=int,
-        default=8,
-        help="Average coverage",
-    )
-    subparser.add_argument(
-        "-s", "--coverage_std", required=False, type=int, default=2, help="Coverage std"
-    )
-    subparser.add_argument(
-        "-d",
-        "--duplication_rate",
-        required=False,
-        type=float,
-        default=0.1,
-        help="Ratio of variants with duplications",
-    )
-    subparser.set_defaults(func=run_tests)
-
-
     subparser = subparsers.add_parser("find_tricky_variants")
     subparser.add_argument("-v", "--variant-to-nodes", required=True)
     subparser.add_argument("-m", "--node-count-model", required=True)
     subparser.add_argument("-r", "--reverse-kmer-index", required=True)
-    subparser.add_argument(
-        "-M",
-        "--max-counts-model",
-        required=False,
-        type=int,
-        default=3,
-        help="If model count exceeds this number, variant is tricky",
-    )
+    subparser.add_argument("-M", "--max-counts-model", required=False, type=int, default=3, help="If model count exceeds this number, variant is tricky")
     subparser.add_argument("-o", "--out-file-name", required=True)
-    subparser.add_argument(
-        "-u",
-        "--only-allow-unique",
-        required=False,
-        type=bool,
-        help="Only allow variants where all kmers are unique",
-    )
+    subparser.add_argument("-u", "--only-allow-unique", required=False, type=bool, help="Only allow variants where all kmers are unique")
     subparser.set_defaults(func=find_tricky_variants)
 
 
@@ -227,17 +141,8 @@ def run_argument_parser(args):
     subparser.add_argument("-m", "--most-similar-variants", required=False)
     subparser.add_argument("-o", "--out-file-name", required=True)
     subparser.add_argument("-t", "--n-threads", required=False, default=1, type=int)
-    subparser.add_argument(
-        "-u", "--use-duplicate-counts", required=False, type=bool, default=False
-    )
-    subparser.add_argument(
-        "-w",
-        "--window-size",
-        required=False,
-        default=50,
-        type=int,
-        help="Number of variants before/after considered as potential helper variant",
-    )
+    subparser.add_argument("-u", "--use-duplicate-counts", required=False, type=bool, default=False)
+    subparser.add_argument("-w", "--window-size", required=False, default=50, type=int, help="Number of variants before/after considered as potential helper variant")
     subparser.set_defaults(func=create_helper_model)
 
     def make_index_bundle(args):
@@ -280,5 +185,3 @@ def run_argument_parser(args):
     args = parser.parse_args(args)
     args.func(args)
     remove_shared_memory_in_session()
-
-
