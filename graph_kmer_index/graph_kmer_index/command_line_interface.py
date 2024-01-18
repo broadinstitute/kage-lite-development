@@ -2,8 +2,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 import sys
 import argparse
-import itertools
-import time
 from multiprocessing import Pool
 import numpy as np
 from itertools import repeat
@@ -15,20 +13,14 @@ from obgraph.graph import Graph
 from .snp_kmer_finder import SnpKmerFinder
 from .flat_kmers import FlatKmers
 from .reverse_kmer_index import ReverseKmerIndex
-from .unique_kmer_index import UniqueKmerIndex
-from .reference_kmer_index import ReferenceKmerIndex
 from pathos.multiprocessing import Pool
 from obgraph.variants import VcfVariants
 from .unique_variant_kmers import UniqueVariantKmersFinder
-from shared_memory_wrapper.shared_memory import to_shared_memory, from_shared_memory, remove_shared_memory_in_session, to_file, from_file
+from shared_memory_wrapper.shared_memory import remove_shared_memory_in_session, to_file, from_file
 from shared_memory_wrapper.shared_memory_v2 import object_to_shared_memory, object_from_shared_memory
-from shared_memory_wrapper import get_shared_pool, close_shared_pool
+from shared_memory_wrapper import get_shared_pool
 from obgraph.variant_to_nodes import VariantToNodes
-from .collision_free_kmer_index import CounterKmerIndex
-from .kmer_finder import DenseKmerFinder
-from .critical_graph_paths import CriticalGraphPaths
 from shared_memory_wrapper import to_file, from_file
-from obgraph.position_id import PositionId
 
 
 def main():

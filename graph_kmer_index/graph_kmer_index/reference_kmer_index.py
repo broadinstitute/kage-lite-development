@@ -6,14 +6,6 @@ from pyfaidx import Fasta
 from .kmer_hashing import power_array
 from .read_kmers import ReadKmers
 
-"""
-@numba.jit
-def fill_zeros_from_end(array):
-    for i in range(1, len(array)):
-        index_pos = len(array) - i
-        if array[index_pos] == 0:
-            array[index_pos] = array[index_pos+1]
-"""
 
 def fill_zeros_from_end(array):
     array = array[::-1]

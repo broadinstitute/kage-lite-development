@@ -1,15 +1,13 @@
 import gc
 import logging
-import time
 
 import dill
 import numpy as np
 from Bio.Seq import Seq
-from npstructures import Counter, HashTable
+from npstructures import Counter
 
-from .snp_kmer_finder import kmer_hash_to_sequence, sequence_to_kmer_hash
 from .flat_kmers import FlatKmers
-from .multi_value_hashtable import MultiValueHashTable
+from .snp_kmer_finder import kmer_hash_to_sequence, sequence_to_kmer_hash
 
 
 class CounterKmerIndex:
@@ -39,125 +37,6 @@ class CounterKmerIndex:
 
     def get_node_counts(self, min_nodes=0):
         return np.bincount(self.nodes, self.counter[self.kmers], minlength=min_nodes)
-
-
-
-class MinimalKmerIndex:
-    def __init__(self, hashes_to_index, n_kmers, nodes, kmers, modulo):
-        self._hashes_to_index = hashes_to_index.astype(np.int64)
-        self._n_kmers = n_kmers.astype(np.uint32)
-        self._nodes = nodes.astype(np.uint32)
-        self._kmers = kmers
-        self._modulo = np.int64(modulo)
-
-    def max_node_id(self):
-        return np.max(self._nodes)
-
-    def to_file(self, file_name):
-        logging.info("Writing kmer index to file: %s" % file_name)
-        with open(file_name, 'wb') as f:
-            dill.dump(self, f)
-
-    @classmethod
-    def from_file(cls, file_name):
-        t = time.perf_counter()
-        try:
-            with open(file_name + ".npz", 'rb') as f:
-                data = dill.load(f)
-        except FileNotFoundError:
-            with open(file_name, 'rb') as f:
-                data = dill.load(f)
-
-        logging.info("Took %.6f sec to read kmer index from file" % (time.perf_counter()-t))
-        return cls(data._hashes_to_index, data._n_kmers, data._nodes, data._kmers, data._modulo)
-
-
-    @classmethod
-    def from_flat_kmers(cls, flat_kmers, modulo=452930477):
-        kmers = flat_kmers._hashes
-        nodes = flat_kmers._nodes
-        logging.info("Making hashes")
-        hashes = kmers % modulo
-        logging.info("Sorting")
-        sorting = np.argsort(hashes)
-        hashes = hashes[sorting]
-        kmers = kmers[sorting]
-        nodes = nodes[sorting]
-        logging.info("Done sorting")
-
-        # Find positions where hashes change (these are our index entries)
-        diffs = np.ediff1d(hashes, to_begin=1)
-        unique_entry_positions = np.nonzero(diffs)[0]
-        try:
-            unique_hashes = hashes[unique_entry_positions]
-        except IndexError:
-            logging.info("unique entry positions: %s" % unique_entry_positions)
-            logging.info("Hashes: %s" % hashes)
-            raise
-
-        lookup = np.zeros(modulo, dtype=np.int)
-        lookup[unique_hashes] = unique_entry_positions
-        n_entries = np.ediff1d(unique_entry_positions, to_end=len(nodes) - unique_entry_positions[-1])
-        n_kmers = np.zeros(modulo, dtype=np.uint32)
-        n_kmers[unique_hashes] = n_entries
-
-        # Find out how many entries there are for each unique hash
-        object = cls(lookup, n_kmers, nodes, kmers, modulo)
-        return object
-
-
-
-class KmerIndex2:
-    # same as CollisionFreeKmerIndex, but with startnode/offset in stead of ref_offset
-    def __init__(self, data, frequencies=None):
-        self._data = data
-        self._frequencies = frequencies
-
-    def get_start_nodes(self, kmer):
-        return self._data[kmer]["start_nodes"]
-
-    def get_start_offsets(self, kmer):
-        return self._data[kmer]["start_offsets"]
-
-    def get_nodes(self, kmer):
-        return self._data[kmer]["nodes"]
-
-    def get_all_kmers(self):
-        return self._data.get_all_keys()
-
-
-    def get_kmer_frequency(self, kmer):
-        assert self._frequencies is not None, "Frequencies not set"
-        return self._frequencies[kmer]
-
-    @classmethod
-    def from_flat_kmers(cls, flat_kmers, modulo=None, skip_frequencies=False):
-        hash_table = MultiValueHashTable.from_keys_and_values(flat_kmers._hashes,
-                                         {"nodes": flat_kmers._nodes,
-                                          "start_nodes": flat_kmers._start_nodes,
-                                          "start_offsets": flat_kmers._start_offsets,
-                                          "allele_frequencies": flat_kmers._allele_frequencies},
-                                         mod=modulo)
-
-        index = cls(hash_table)
-        if not skip_frequencies:
-            index.count_unique_kmer_occurences()
-
-        return index
-
-    def count_unique_kmer_occurences(self):
-        unique_kmers = self._data.get_unique_keys()
-        counts = np.zeros_like(unique_kmers)
-
-        # count unique entries (unique start node/offset) for each kmer
-        for i, kmer in enumerate(unique_kmers):
-            n = len(set((node, offset) for node, offset in
-                        zip(self.get_start_nodes(kmer), self.get_start_offsets(kmer))))
-            counts[i] = n
-
-        self._frequencies = HashTable(unique_kmers, counts)
-
-
 
 
 class CollisionFreeKmerIndex:
@@ -453,5 +332,3 @@ class CollisionFreeKmerIndex:
             modulo=self._modulo,
             skip_frequencies=skip_frequencies
         )
-
-
