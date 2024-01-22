@@ -18,72 +18,18 @@ def interval_chunks(start, end, n_chunks):
     return [(start, end) for start, end in zip(boundaries[0:-1], boundaries[1:])]
 
 
-class Mapper:
-    def start_next_job(self):
-        pass
-
-    def __iter__(self):
-        raise NotImplementedError()
-
-
-class RangeMapper(Mapper):
-    def __init__(self, data, function, start, end):
-        self.data = data
-        self.function = function
-        self.start = start
-        self.end = end
-
-    def __iter__(self):
-        pass
-
-    def run(self):
-        # get data from shared memory, run on function with next start and end
-        pass
-
-
-class Reducer:
-    # deals with the results from a job
-    def add_result(self, result):
-        raise NotImplementedError()
-
-    def get_final_result(self):
-        raise NotImplementedError()
+class AddReducer():
+    def __init__(self, initial):
+        self.result = initial
 
     def __call__(self):
         return self.get_final_result()
-
-
-class AddReducer(Reducer):
-    def __init__(self, initial):
-        self.result = initial
 
     def add_result(self, result):
         self.result += result
 
     def get_final_result(self):
         return self.result
-
-
-class ConcatenateReducer(Reducer):
-    def __init__(self, axis=0):
-        self._axis = axis
-        self.results = []
-
-    def add_result(self, result):
-        self.results.append(result)
-
-    def get_final_result(self):
-        return np.concatenate(self.results, axis=self._axis)
-
-
-"""
-def run_in_parallel(mapper, reducer, n_threads=8, reduce="element-wise-sum"):
-    pool = multiprocessing.Pool(n_threads)
-    for result in pool.imap(mapper.run, mapper):
-        reducer.add_result(result)
-
-    return reducer.get_final_result()
-"""
 
 
 def subchunker(iterable, n=10):
@@ -101,8 +47,6 @@ def chunker(iterable, n=10):
     while True:
         subchunk = subchunker(iterable, n=n)
         yield subchunk
-
-
 
 
 class FunctionWrapper:
@@ -138,7 +82,7 @@ def chunked_imap(pool, function, iterable, chunk_size=10):
 
 
 def parallel_map_reduce(function, data, mapper, reducer=None, n_threads=7, backend="shared_array", chunk_size=50):
-    assert reducer is None or isinstance(reducer, Reducer)
+    assert reducer is None or isinstance(reducer, AddReducer)
     assert isinstance(mapper, Iterable), "Mapper must be iterable"
     assert isinstance(data, tuple)
 
@@ -164,8 +108,3 @@ def parallel_map_reduce(function, data, mapper, reducer=None, n_threads=7, backe
         out = object_from_shared_memory(data, backend=backend)
 
     remove_shared_memory(data)
-    return out
-
-def log_memory_usage(logplace=""):
-    memory = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) / 1000000
-    logging.info("Memory usage (%s): %.4f GB" % (logplace, memory))
