@@ -15,6 +15,7 @@ workflow KAGEPanelWithPreprocessing {
     input {
         File input_vcf_gz
         File input_vcf_gz_tbi
+        Boolean do_preprocessing = true # if false, input_vcf_gz is assumed to contain only biallelics
         File reference_fasta
         File reference_fasta_fai
         String output_prefix
@@ -31,21 +32,26 @@ workflow KAGEPanelWithPreprocessing {
         Int? cpu_make_count_model
     }
 
-    call PreprocessPanelVCF {
-        input:
-            input_vcf_gz = input_vcf_gz,
-            input_vcf_gz_tbi = input_vcf_gz_tbi,
-            chromosomes = chromosomes,
-            output_prefix = output_prefix,
-            docker = docker,
-            monitoring_script = monitoring_script,
-            runtime_attributes = runtime_attributes
+    if (do_preprocessing) {
+        call PreprocessPanelVCF {
+            input:
+                input_vcf_gz = input_vcf_gz,
+                input_vcf_gz_tbi = input_vcf_gz_tbi,
+                chromosomes = chromosomes,
+                output_prefix = output_prefix,
+                docker = docker,
+                monitoring_script = monitoring_script,
+                runtime_attributes = runtime_attributes
+        }
     }
+
+    File preprocessed_panel_bi_vcf_gz = if do_preprocessing then PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz else input_vcf_gz
+    File preprocessed_panel_bi_vcf_gz_tbi = if do_preprocessing then PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi else input_vcf_gz_tbi
 
     call MakeSitesOnlyVcfAndNumpyVariants {
         input:
-            input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-            input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+            input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+            input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
             chromosomes = chromosomes,
             output_prefix = output_prefix,
             docker = docker,
@@ -56,8 +62,8 @@ workflow KAGEPanelWithPreprocessing {
     scatter (i in range(length(chromosomes))) {
         call MakeChromosomeGenotypeMatrix {
             input:
-                input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-                input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+                input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+                input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
                 chromosome = chromosomes[i],
                 output_prefix = output_prefix,
                 docker = docker,
@@ -67,8 +73,8 @@ workflow KAGEPanelWithPreprocessing {
 
         call MakeChromosomeGraph {
             input:
-                input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-                input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+                input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+                input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
                 reference_fasta = reference_fasta,
                 chromosome = chromosomes[i],
                 output_prefix = output_prefix,

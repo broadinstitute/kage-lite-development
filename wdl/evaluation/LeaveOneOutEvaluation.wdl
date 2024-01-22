@@ -1,6 +1,6 @@
 version 1.0
 
-import "../kage/KAGEPanel.wdl" as KAGEPanel
+import "../kage/KAGEPanelWithPreprocessing.wdl" as KAGEPanelWithPreprocessing
 import "../pangenie/PanGenieCase.wdl" as PanGenieCase
 
 struct RuntimeAttributes {
@@ -96,10 +96,11 @@ workflow LeaveOneOutEvaluation {
                 runtime_attributes = runtime_attributes
         }
 
-        call KAGEPanel.KAGEPanel as KAGELeaveOneOutPanel {
+        call KAGEPanelWithPreprocessing.KAGEPanelWithPreprocessing as KAGELeaveOneOutPanel {
             input:
                 input_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_bi_vcf_gz,
                 input_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_bi_vcf_gz_tbi,
+                do_preprocessing = false,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
                 output_prefix = leave_one_out_output_prefix,
