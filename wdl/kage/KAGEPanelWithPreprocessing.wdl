@@ -45,8 +45,8 @@ workflow KAGEPanelWithPreprocessing {
         }
     }
 
-    File preprocessed_panel_bi_vcf_gz = if do_preprocessing then PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz else input_vcf_gz
-    File preprocessed_panel_bi_vcf_gz_tbi = if do_preprocessing then PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi else input_vcf_gz_tbi
+    File preprocessed_panel_bi_vcf_gz = select_first([PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz, input_vcf_gz])
+    File preprocessed_panel_bi_vcf_gz_tbi = select_first([PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi, input_vcf_gz_tbi])
 
     call MakeSitesOnlyVcfAndNumpyVariants {
         input:
