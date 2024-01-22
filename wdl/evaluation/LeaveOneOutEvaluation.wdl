@@ -238,7 +238,7 @@ task PreprocessPanelVCF {
         fi
 
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
-            bcftools norm --no-version -m+ -Ou | \
+            bcftools norm --no-version -m+ -N -Ou | \
             bcftools plugin fill-tags --no-version -Ou -- -t AF,AC,AN | \
             truvari anno svinfo | \
             bcftools annotate --no-version -a ~{repeat_mask_bed} -c CHROM,FROM,TO -m +RM -Ou | \
@@ -248,11 +248,11 @@ task PreprocessPanelVCF {
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
 
         bcftools view --no-version --min-alleles 3  ~{output_prefix}.preprocessed.vcf.gz -Ou | \
-            bcftools norm --no-version -m- -Ou | \
+            bcftools norm --no-version -m- -N -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.multi.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.multi.split.vcf.gz
 
-        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.vcf.gz -Ou | \
+        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.vcf.gz -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.split.temp.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.split.temp.vcf.gz
 
@@ -402,7 +402,7 @@ task CreateLeaveOneOutPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.vcf.gz
 
-        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
+        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.LOO.split.vcf.gz
 
@@ -414,7 +414,7 @@ task CreateLeaveOneOutPanelVCF {
         bcftools index -t ~{output_prefix}.preprocessed.LOO.bi.vcf.gz
 
          bcftools view --no-version --min-alleles 3  ~{input_vcf_gz} -Ou | \
-            bcftools norm --no-version -m- -Ou | \
+            bcftools norm --no-version -m- -N -Ou | \
             bcftools view --no-version -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz -- -t AF,AC,AN
@@ -664,7 +664,7 @@ task CalculateMetrics {
         fi
 
         # split multiallelics in case (may be redundant)
-        bcftools norm --no-version -r ~{sep="," chromosomes} -m- ~{case_vcf_gz} -Oz -o case.split.vcf.gz
+        bcftools norm --no-version -r ~{sep="," chromosomes} -m- -N ~{case_vcf_gz} -Oz -o case.split.vcf.gz
         bcftools index -t case.split.vcf.gz
 
         # mark case variants in panel

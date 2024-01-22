@@ -318,7 +318,7 @@ task PreprocessPanelVCF {
         fi
 
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
-            bcftools norm --no-version -m+ -Ou | \
+            bcftools norm --no-version -m+ -N -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.joined.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.joined.vcf.gz
 
@@ -328,7 +328,7 @@ task PreprocessPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
 
-        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.vcf.gz -Ou | \
+        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.vcf.gz -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.split.vcf.gz
 
@@ -340,7 +340,7 @@ task PreprocessPanelVCF {
         bcftools index -t ~{output_prefix}.preprocessed.bi.vcf.gz
 
         bcftools view --no-version --min-alleles 3  ~{output_prefix}.joined.vcf.gz -Ou | \
-            bcftools norm --no-version -m- -Ou | \
+            bcftools norm --no-version -m- -N -Ou | \
             bcftools view --no-version --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.multi.split.vcf.gz -- -t AF,AC,AN
