@@ -108,3 +108,4 @@ def parallel_map_reduce(function, data, mapper, reducer=None, n_threads=7, backe
         out = object_from_shared_memory(data, backend=backend)
 
     remove_shared_memory(data)
+    return out
