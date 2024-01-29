@@ -1,16 +1,41 @@
+import numpy as np
 import pytest
 import obgraph.command_line_interface as obgraph_cli
 import graph_kmer_index.command_line_interface as graph_kmer_index_cli
 import kage.command_line_interface as kage_cli
 import lite_utils.command_line_interface as lite_utils_cli
 import kmer_mapper.command_line_interface as kmer_mapper_cli
+import dill
 
 test_resources_dir = 'resources'
 output_dir = '/tmp'
 
 # tests replicate individual tasks or portions of the WDL workflow using the same test data
-# expected results are not currently checked
 
+atol = 1E-10
+
+def assert_equals_pkl(result_pkl, expected_pkl, attrs=[]):
+    with open(result_pkl, 'rb') as r, open(expected_pkl, 'rb') as e:
+        result = dill.load(r)
+        expected = dill.load(e)
+        print(result)
+        print(expected)
+
+        if not attrs:
+            assert result == expected
+        else:
+            print(vars(expected).keys())
+            for attr in attrs:
+                result_attr = getattr(result, attr)
+                expected_attr =getattr(expected, attr)
+                assert type(result_attr) == type(expected_attr)
+
+                if type(result_attr) == np.ndarray:
+                    assert np.allclose(result_attr, expected_attr, atol=atol)
+                else:
+                    assert result_attr == expected_attr
+
+# TODO check expected
 def test_MakeSitesOnlyVcfAndNumpyVariants():
     vcf = f'{test_resources_dir}/MakeSitesOnlyVcfAndNumpyVariants/inputs/test.sites.vcf'
     output = f'{output_dir}/test.numpy_variants.pkl'
@@ -24,12 +49,15 @@ def test_MakeChromosomeGenotypeMatrix():
     vcf_gz = f'{test_resources_dir}/MakeChromosomeGenotypeMatrix/inputs/test.preprocessed.bi.vcf.gz'
     chromosome = 'chr1'
     output = f'{output_dir}/test.{chromosome}.genotype_matrix.pkl'
+    expected = f'{test_resources_dir}/MakeChromosomeGenotypeMatrix/expected/test.{chromosome}.genotype_matrix.pkl'
 
     lite_utils_cli.run_argument_parser([
         'make_genotype_matrix',
         '-v', vcf_gz,
         '-c', chromosome,
         '-o', output])
+
+    assert_equals_pkl(output, expected, attrs=['matrix'])
 
 def test_MakeChromosomeGraph():
     vcf_gz = f'{test_resources_dir}/MakeChromosomeGraph/inputs/test.preprocessed.bi.vcf.gz'
@@ -38,6 +66,8 @@ def test_MakeChromosomeGraph():
     output_prefix = f'{output_dir}/test'
     output_graph = f'{output_prefix}.{chromosome}.obgraph.pkl'
     output_position_id_index = f'{output_prefix}.{chromosome}.position_id_index.pkl'
+    expected_graph = f'{test_resources_dir}/MakeChromosomeGraph/expected/test.{chromosome}.obgraph.pkl'
+    expected_position_id_index = f'{test_resources_dir}/MakeChromosomeGraph/expected/test.{chromosome}.position_id_index.pkl'
 
     obgraph_cli.run_argument_parser([
         'make',
@@ -55,11 +85,19 @@ def test_MakeChromosomeGraph():
         '-g', output_graph,
         '-o', output_position_id_index])
 
+    assert_equals_pkl(output_graph, expected_graph,
+                      attrs=['nodes', 'edges', 'sequences', 'node_to_ref_offset', 'ref_offset_to_node',
+                             '_linear_ref_nodes_cache', 'chromosome_start_nodes', 'allele_frequencies',
+                             'numeric_node_sequences', 'linear_ref_nodes_index',
+                             'linear_ref_nodes_and_dummy_nodes_index'])
+    assert_equals_pkl(output_position_id_index, expected_position_id_index, attrs=['_index'])
+
 def test_MakeChromosomeVariantToNodes():
     graph = f'{test_resources_dir}/MakeChromosomeVariantToNodes/inputs/test.chr1.obgraph.pkl'
     vcf_gz = f'{test_resources_dir}/MakeChromosomeVariantToNodes/inputs/chr1.sites.vcf.gz'
     chromosome = 'chr1'
     output = f'{output_dir}/test.{chromosome}.variant_to_nodes.pkl'
+    expected = f'{test_resources_dir}/MakeChromosomeVariantToNodes/expected/test.{chromosome}.variant_to_nodes.pkl'
 
     obgraph_cli.run_argument_parser([
         'make_variant_to_nodes',
@@ -67,23 +105,28 @@ def test_MakeChromosomeVariantToNodes():
         '-v', vcf_gz,
         '-o', output])
 
-def test_MakeChromosomeHaplotypeToNodes():
-        variant_to_nodes = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.variant_to_nodes.pkl'
-        genotype_matrix = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.genotype_matrix.pkl'
-        chromosome = 'chr1'
-        output = f'{output_dir}/test.{chromosome}.haplotype_to_nodes.pkl'
+    assert_equals_pkl(output, expected, attrs=['ref_nodes', 'var_nodes'])
 
-        obgraph_cli.run_argument_parser([
-            'make_haplotype_to_nodes_bnp',
-            '-g', variant_to_nodes,
-            '-v', genotype_matrix,
-            '-o', output])
+# TODO check expected
+def test_MakeChromosomeHaplotypeToNodes():
+    variant_to_nodes = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.variant_to_nodes.pkl'
+    genotype_matrix = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.genotype_matrix.pkl'
+    chromosome = 'chr1'
+    output = f'{output_dir}/test.{chromosome}.haplotype_to_nodes.pkl'
+
+    obgraph_cli.run_argument_parser([
+        'make_haplotype_to_nodes_bnp',
+        '-g', variant_to_nodes,
+        '-v', genotype_matrix,
+        '-o', output])
 
 def test_MergeChromosomeGraphs():
     chr1_graph = f'{test_resources_dir}/MergeChromosomeGraphs/inputs/test.chr1.obgraph.pkl'
     chr2_graph = f'{test_resources_dir}/MergeChromosomeGraphs/inputs/test.chr2.obgraph.pkl'
     output_graph = f'{output_dir}/test.obgraph.pkl'
     output_position_id_index = f'{output_dir}/test.position_id_index.pkl'
+    expected_graph = f'{test_resources_dir}/MergeChromosomeGraphs/expected/test.obgraph.pkl'
+    expected_position_id_index = f'{test_resources_dir}/MergeChromosomeGraphs/expected/test.position_id_index.pkl'
 
     obgraph_cli.run_argument_parser([
         'merge_graphs',
@@ -94,16 +137,31 @@ def test_MergeChromosomeGraphs():
         '-g', output_graph,
         '-o', output_position_id_index])
 
+    assert_equals_pkl(output_graph, expected_graph,
+                      attrs=['nodes', 'edges', 'sequences', 'node_to_ref_offset', 'ref_offset_to_node',
+                             '_linear_ref_nodes_cache', 'chromosome_start_nodes', 'allele_frequencies',
+                             'numeric_node_sequences', 'linear_ref_nodes_index',
+                             'linear_ref_nodes_and_dummy_nodes_index'])
+    assert_equals_pkl(output_position_id_index, expected_position_id_index, attrs=['_index'])
+
 def test_MergeChromosomeVariantToNodes():
     chr1_variant_to_nodes = f'{test_resources_dir}/MergeChromosomeVariantToNodes/inputs/test.chr1.variant_to_nodes.pkl'
     chr2_variant_to_nodes = f'{test_resources_dir}/MergeChromosomeVariantToNodes/inputs/test.chr2.variant_to_nodes.pkl'
     output_prefix = f'{output_dir}/test'
+    output_num_nodes = f'{output_prefix}.num_nodes.pkl'
+    output_variant_to_nodes = f'{output_prefix}.variant_to_nodes.pkl'
+    expected_num_nodes = f'{test_resources_dir}/MergeChromosomeVariantToNodes/expected/test.num_nodes.pkl'
+    expected_variant_to_nodes = f'{test_resources_dir}/MergeChromosomeVariantToNodes/expected/test.variant_to_nodes.pkl'
 
     lite_utils_cli.run_argument_parser([
         'merge_chromosome_variant_to_nodes',
         '--variant-to-nodes', chr1_variant_to_nodes, chr2_variant_to_nodes,
         '--output-prefix', output_prefix])
 
+    assert_equals_pkl(output_num_nodes, expected_num_nodes, attrs=[])
+    assert_equals_pkl(output_variant_to_nodes, expected_variant_to_nodes, attrs=['ref_nodes', 'var_nodes'])
+
+# TODO check expected
 def test_MergeChromosomeHaplotypeToNodes():
     chr1_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr1.haplotype_to_nodes.pkl'
     chr2_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr2.haplotype_to_nodes.pkl'
@@ -124,7 +182,12 @@ def test_MakeHelperModel(num_threads):
     window_size = '100'
     num_threads = str(num_threads)
     output_genotype_matrix = f'{output_dir}/test.genotype_matrix.pkl'
-    output_helper_model = f'{output_dir}/test.helper_model.pkl'
+    output_prefix = f'{output_dir}/test'
+    output_helper_model = f'{output_prefix}.helper_model.pkl'
+    output_helper_model_combo_matrix = f'{output_prefix}.helper_model_combo_matrix.pkl'
+    expected_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/expected/test.genotype_matrix.pkl'
+    expected_helper_model = f'{test_resources_dir}/MakeHelperModel/expected/test.helper_model.pkl'
+    expected_helper_model_combo_matrix = f'{test_resources_dir}/MakeHelperModel/expected/test.helper_model_combo_matrix.pkl'
 
     lite_utils_cli.run_argument_parser([
         'merge_genotype_matrices_and_convert_to_unphased',
@@ -136,7 +199,11 @@ def test_MakeHelperModel(num_threads):
         '-v', variant_to_nodes,
         '-w', window_size,
         '-t', num_threads,
-        '-o', output_helper_model])
+        '-o', output_prefix])
+
+    assert_equals_pkl(output_genotype_matrix, expected_genotype_matrix, attrs=['matrix'])
+    assert_equals_pkl(output_helper_model, expected_helper_model, attrs=['helper_variants'])
+    assert_equals_pkl(output_helper_model_combo_matrix, expected_helper_model_combo_matrix, attrs=['matrix'])
 
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_SampleChromosomeKmersFromLinearReference(num_threads):
