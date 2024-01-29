@@ -260,7 +260,7 @@ def test_MakeVariantKmerIndexWithReverseComplements():
 def test_MakeCountModel(num_threads):
     graph = f'{test_resources_dir}/MakeCountModel/inputs/test.obgraph.pkl'
     haplotype_to_nodes = f'{test_resources_dir}/MakeCountModel/inputs/test.haplotype_to_nodes.pkl'
-    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/MakeCountModel/inputs/test.kmer_index_only_variants_with_revcomp.pkl'
+    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
     num_threads = str(num_threads)
     output = f'{output_dir}/test.sampling_count_model.pkl'
 
@@ -305,7 +305,7 @@ def test_MakeIndexBundle():
     tricky_variants = f'{test_resources_dir}/MakeIndexBundle/inputs/test.tricky_variants.pkl'
     helper_model = f'{test_resources_dir}/MakeIndexBundle/inputs/test.helper_model.pkl'
     helper_model_combo_matrix = f'{test_resources_dir}/MakeIndexBundle/inputs/test.helper_model_combo_matrix.pkl'
-    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/MakeIndexBundle/inputs/test.kmer_index_only_variants_with_revcomp.pkl'
+    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
     output = f'{output_dir}/test.index.pkl'
 
     kage_cli.run_argument_parser([
@@ -321,8 +321,8 @@ def test_MakeIndexBundle():
 
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_Case(num_threads):
-    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/Case/inputs/test.kmer_index_only_variants_with_revcomp.pkl'
-    index = f'{test_resources_dir}/Case/inputs/test.index.pkl'
+    kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
+    index = f'{test_resources_dir}/large/test.index.pkl'
     fasta = f'{test_resources_dir}/Case/inputs/HG00731.final.chr1-1Mbp-chr2-1Mbp.noN.fasta'
     num_threads = str(num_threads)
     chunk_size = '100000000'
