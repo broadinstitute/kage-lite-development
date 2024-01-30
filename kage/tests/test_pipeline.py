@@ -27,10 +27,10 @@ def assert_equals_pkl(result_pkl, expected_pkl, attrs=[]):
             print(vars(expected).keys())
             for attr in attrs:
                 result_attr = getattr(result, attr)
-                expected_attr =getattr(expected, attr)
+                expected_attr = getattr(expected, attr)
                 assert type(result_attr) == type(expected_attr)
 
-                if type(result_attr) == np.ndarray:
+                if isinstance(result_attr, np.ndarray):
                     assert np.allclose(result_attr, expected_attr, atol=atol)
                 else:
                     assert result_attr == expected_attr
@@ -107,7 +107,7 @@ def test_MakeChromosomeVariantToNodes():
 
     assert_equals_pkl(output, expected, attrs=['ref_nodes', 'var_nodes'])
 
-# TODO check expected
+# TODO check expected, assert_equals_pkl doesn't work with DiscBackedHaplotypeToNodes
 def test_MakeChromosomeHaplotypeToNodes():
     variant_to_nodes = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.variant_to_nodes.pkl'
     genotype_matrix = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.genotype_matrix.pkl'
@@ -161,18 +161,22 @@ def test_MergeChromosomeVariantToNodes():
     assert_equals_pkl(output_num_nodes, expected_num_nodes, attrs=[])
     assert_equals_pkl(output_variant_to_nodes, expected_variant_to_nodes, attrs=['ref_nodes', 'var_nodes'])
 
-# TODO check expected
+# TODO check expected, assert_equals_pkl doesn't work with DiscBackedHaplotypeToNodes
 def test_MergeChromosomeHaplotypeToNodes():
     chr1_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr1.haplotype_to_nodes.pkl'
     chr2_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr2.haplotype_to_nodes.pkl'
     num_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.num_nodes.pkl'
     output_prefix = f'{output_dir}/test'
+    output_haplotype_to_nodes = f'{output_prefix}.haplotype_to_nodes.pkl.haplotype_nodes'
+    expected_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/expected/test.haplotype_to_nodes.pkl.haplotype_nodes'
 
     lite_utils_cli.run_argument_parser([
         'merge_chromosome_haplotype_to_nodes',
         '--haplotype-to-nodes', chr1_haplotype_to_nodes, chr2_haplotype_to_nodes,
         '--num-nodes', num_nodes,
         '--output-prefix', output_prefix])
+
+    assert_equals_pkl(output_haplotype_to_nodes, expected_haplotype_to_nodes, attrs=[])
 
 @pytest.mark.parametrize("num_threads", [2]) # single thread has a bug
 def test_MakeHelperModel(num_threads):
@@ -205,16 +209,18 @@ def test_MakeHelperModel(num_threads):
     assert_equals_pkl(output_helper_model, expected_helper_model, attrs=['helper_variants'])
     assert_equals_pkl(output_helper_model_combo_matrix, expected_helper_model_combo_matrix, attrs=['matrix'])
 
+# TODO failing
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_SampleChromosomeKmersFromLinearReference(num_threads):
     chromosome_reference_fasta = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/inputs/chromosome.fa'
     num_threads = str(num_threads)
     spacing = '1'
     kmer_length = '31'
-    include_reverse_complement = 'True'
+    include_reverse_complement = 'true'
     chromosome = 'chr1'
     chromosome_length = '1000000'
     output = f'{output_dir}/test.{chromosome}.linear_kmers.pkl'
+    expected = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/expected/test.{chromosome}.linear_kmers.pkl'
 
     graph_kmer_index_cli.run_argument_parser([
         'make',
@@ -227,12 +233,16 @@ def test_SampleChromosomeKmersFromLinearReference(num_threads):
         '-G', chromosome_length,
         '-o', output])
 
-def test_MergeFlatKmers(): # use test data from aliased task MergeChromosomeKmersFromLinearReference
+    assert_equals_pkl(output, expected, attrs=['_hashes', '_nodes', '_ref_offsets', '_allele_frequencies'])
+
+# uses test data from aliased task MergeChromosomeKmersFromLinearReference
+def test_MergeFlatKmers():
     chr1_flat_kmers = f'{test_resources_dir}/MergeChromosomeKmersFromLinearReference/inputs/test.chr1.linear_kmers.pkl'
     chr2_flat_kmers = f'{test_resources_dir}/MergeChromosomeKmersFromLinearReference/inputs/test.chr2.linear_kmers.pkl'
     num_nodes = f'{test_resources_dir}/MergeChromosomeKmersFromLinearReference/inputs/test.num_nodes.pkl'
     reference_fasta_fai = f'{test_resources_dir}/MergeChromosomeKmersFromLinearReference/inputs/GRCh38_full_analysis_set_plus_decoy_hla.chr1-1Mbp-chr2-1Mbp.fa.fai'
     output = f'{output_dir}/test.linear_kmers.pkl'
+    expected = f'{test_resources_dir}/MergeChromosomeKmersFromLinearReference/expected/test.linear_kmers.pkl'
 
     lite_utils_cli.run_argument_parser([
         'merge_flat_kmers',
@@ -241,10 +251,13 @@ def test_MergeFlatKmers(): # use test data from aliased task MergeChromosomeKmer
         '--reference-fasta-fai', reference_fasta_fai,
         '-o', output])
 
+    assert_equals_pkl(output, expected, attrs=['_hashes', '_nodes', '_ref_offsets', '_allele_frequencies'])
+
 def test_MakeLinearReferenceKmerCounter():
     linear_kmers = f'{test_resources_dir}/MakeLinearReferenceKmerCounter/inputs/test.linear_kmers.pkl'
     subsample_ratio = '1'
     output = f'{output_dir}/test.linear_kmers_counter.pkl'
+    expected = f'{test_resources_dir}/MakeLinearReferenceKmerCounter/expected/test.linear_kmers_counter.pkl'
 
     graph_kmer_index_cli.run_argument_parser([
         'count_kmers',
@@ -252,34 +265,39 @@ def test_MakeLinearReferenceKmerCounter():
         '-f', linear_kmers,
         '-o', output])
 
+    assert_equals_pkl(output, expected, attrs=['counter'])
+
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_GetChromosomeShortVariantKmers(num_threads):
-        graph = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.obgraph.pkl'
-        position_id_index = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.position_id_index.pkl'
-        variant_to_nodes = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.variant_to_nodes.pkl'
-        linear_kmers_counter = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.linear_kmers_counter.pkl'
-        vcf_gz = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/chr1.sites.vcf.gz'
-        use_dense_kmer_finder = 'True'
-        num_threads = str(num_threads)
-        kmer_length = '31'
-        chunk_size = '20000'
-        max_variant_nodes = '3'
-        chromosome = 'chr1'
-        output = f'{output_dir}/test.{chromosome}.short_variant_kmers.pkl'
+    graph = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.obgraph.pkl'
+    position_id_index = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.position_id_index.pkl'
+    variant_to_nodes = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.chr1.variant_to_nodes.pkl'
+    linear_kmers_counter = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/test.linear_kmers_counter.pkl'
+    vcf_gz = f'{test_resources_dir}/GetChromosomeShortVariantKmers/inputs/chr1.sites.vcf.gz'
+    use_dense_kmer_finder = 'True'
+    num_threads = str(num_threads)
+    kmer_length = '31'
+    chunk_size = '20000'
+    max_variant_nodes = '3'
+    chromosome = 'chr1'
+    output = f'{output_dir}/test.{chromosome}.short_variant_kmers.pkl'
+    expected = f'{test_resources_dir}/GetChromosomeShortVariantKmers/expected/test.{chromosome}.short_variant_kmers.pkl'
 
-        graph_kmer_index_cli.run_argument_parser([
-            'make_unique_variant_kmers',
-            '-D', use_dense_kmer_finder,
-            '-t', num_threads,
-            '-k', kmer_length,
-            '-c', chunk_size,
-            '--max-variant-nodes', max_variant_nodes,
-            '-g', graph,
-            '-p', position_id_index,
-            '-V', variant_to_nodes,
-            '-I', linear_kmers_counter,
-            '-v', vcf_gz,
-            '-o', output])
+    graph_kmer_index_cli.run_argument_parser([
+        'make_unique_variant_kmers',
+        '-D', use_dense_kmer_finder,
+        '-t', num_threads,
+        '-k', kmer_length,
+        '-c', chunk_size,
+        '--max-variant-nodes', max_variant_nodes,
+        '-g', graph,
+        '-p', position_id_index,
+        '-V', variant_to_nodes,
+        '-I', linear_kmers_counter,
+        '-v', vcf_gz,
+        '-o', output])
+
+    assert_equals_pkl(output, expected, attrs=['_hashes', '_nodes', '_ref_offsets', '_allele_frequencies'])
 
 def test_SampleChromosomeStructuralVariantKmers():
     graph = f'{test_resources_dir}/SampleChromosomeStructuralVariantKmers/inputs/test.chr1.obgraph.pkl'
@@ -288,6 +306,7 @@ def test_SampleChromosomeStructuralVariantKmers():
     kmer_length = '31'
     chromosome = 'chr1'
     output = f'{output_dir}/test.{chromosome}.structural_variant_kmers.pkl'
+    expected = f'{test_resources_dir}/SampleChromosomeStructuralVariantKmers/expected/test.{chromosome}.structural_variant_kmers.pkl'
 
     graph_kmer_index_cli.run_argument_parser([
         'sample_kmers_from_structural_variants',
@@ -297,14 +316,20 @@ def test_SampleChromosomeStructuralVariantKmers():
         '-i', linear_kmers_counter,
         '-o', output])
 
+    assert_equals_pkl(output, expected, attrs=['_hashes', '_nodes', '_ref_offsets', '_allele_frequencies'])
+
 def test_MakeReverseVariantKmerIndex():
     variant_kmers = f'{test_resources_dir}/MakeReverseVariantKmerIndex/inputs/test.variant_kmers.pkl'
     output = f'{output_dir}/test.reverse_variant_kmers.pkl'
+    expected = f'{test_resources_dir}/MakeReverseVariantKmerIndex/expected/test.reverse_variant_kmers.pkl'
+
 
     graph_kmer_index_cli.run_argument_parser([
         'make_reverse',
         '-f', variant_kmers,
         '-o', output])
+
+    assert_equals_pkl(output, expected, attrs=['nodes_to_index_positions', 'nodes_to_n_hashes', 'hashes', 'ref_positions'])
 
 def test_MakeVariantKmerIndexWithReverseComplements():
     variant_kmers = f'{test_resources_dir}/MakeVariantKmerIndexWithReverseComplements/inputs/test.variant_kmers.pkl'
@@ -313,6 +338,7 @@ def test_MakeVariantKmerIndexWithReverseComplements():
     add_reverse_complements = 'True'
     skip_frequences = 'True'
     output = f'{output_dir}/test.kmer_index_only_variants_with_revcomp.pkl'
+    expected = f'{test_resources_dir}/MakeVariantKmerIndexWithReverseComplements/expected/test.kmer_index_only_variants_with_revcomp.pkl'
 
     graph_kmer_index_cli.run_argument_parser([
         'make_from_flat',
@@ -323,6 +349,10 @@ def test_MakeVariantKmerIndexWithReverseComplements():
         '--skip-frequencies', skip_frequences,
         '-o', output])
 
+    assert_equals_pkl(output, expected,
+                      attrs=['_hashes_to_index', '_n_kmers', '_nodes', '_ref_offsets', '_kmers', '_modulo',
+                             '_frequencies', '_allele_frequencies'])
+
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_MakeCountModel(num_threads):
     graph = f'{test_resources_dir}/MakeCountModel/inputs/test.obgraph.pkl'
@@ -330,6 +360,7 @@ def test_MakeCountModel(num_threads):
     kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
     num_threads = str(num_threads)
     output = f'{output_dir}/test.sampling_count_model.pkl'
+    expected = f'{test_resources_dir}/MakeCountModel/expected/test.sampling_count_model.pkl'
 
     kage_cli.run_argument_parser([
         'sample_node_counts_from_population',
@@ -339,10 +370,16 @@ def test_MakeCountModel(num_threads):
         '-i', kmer_index_only_variants_with_revcomp,
         '-o', output])
 
+    with open(output, 'rb') as r_, open(expected, 'rb') as e_:
+        r = dill.load(r_)
+        e = dill.load(e_)
+        assert np.allclose(r.diplotype_counts, e.diplotype_counts, atol=atol)
+
 def test_RefineCountModel():
     sampling_count_model = f'{test_resources_dir}/RefineCountModel/inputs/test.sampling_count_model.pkl'
     variant_to_nodes = f'{test_resources_dir}/RefineCountModel/inputs/test.variant_to_nodes.pkl'
     output = f'{output_dir}/test.refined_sampling_count_model.pkl'
+    expected = f'{test_resources_dir}/RefineCountModel/expected/test.refined_sampling_count_model.pkl'
 
     kage_cli.run_argument_parser([
         'refine_sampling_model',
@@ -350,12 +387,19 @@ def test_RefineCountModel():
         '-v', variant_to_nodes,
         '-o', output])
 
+    with open(output, 'rb') as r_, open(expected, 'rb') as e_:
+        r = dill.load(r_)
+        e = dill.load(e_)
+        for r_model, e_model in zip(r, e):
+            assert np.allclose(r_model.diplotype_counts, e_model.diplotype_counts, atol=atol)
+
 def test_FindTrickyVariants():
     sampling_count_model = f'{test_resources_dir}/FindTrickyVariants/inputs/test.sampling_count_model.pkl'
     variant_to_nodes = f'{test_resources_dir}/FindTrickyVariants/inputs/test.variant_to_nodes.pkl'
     reverse_variant_kmers = f'{test_resources_dir}/FindTrickyVariants/inputs/test.reverse_variant_kmers.pkl'
     max_counts = '1000'
     output = f'{output_dir}/test.tricky_variants.pkl'
+    expected = f'{test_resources_dir}/FindTrickyVariants/expected/test.tricky_variants.pkl'
 
     kage_cli.run_argument_parser([
         'find_tricky_variants',
@@ -365,6 +409,9 @@ def test_FindTrickyVariants():
         '-M', max_counts,
         '-o', output])
 
+    assert_equals_pkl(output, expected, attrs=['tricky_variants'])
+
+# expected output not tested
 def test_MakeIndexBundle():
     variant_to_nodes = f'{test_resources_dir}/MakeIndexBundle/inputs/test.variant_to_nodes.pkl'
     numpy_variants = f'{test_resources_dir}/MakeIndexBundle/inputs/test.numpy_variants.pkl'
@@ -386,6 +433,7 @@ def test_MakeIndexBundle():
         '-i', kmer_index_only_variants_with_revcomp,
         '-o', output])
 
+# TODO check expected
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_Case(num_threads):
     kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
