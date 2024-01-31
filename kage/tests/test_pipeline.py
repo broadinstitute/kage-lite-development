@@ -6,6 +6,8 @@ import kage.command_line_interface as kage_cli
 import lite_utils.command_line_interface as lite_utils_cli
 import kmer_mapper.command_line_interface as kmer_mapper_cli
 import dill
+import logging
+import difflib
 
 test_resources_dir = 'resources'
 output_dir = '/tmp'
@@ -18,32 +20,38 @@ def assert_equals_pkl(result_pkl, expected_pkl, attrs=[]):
     with open(result_pkl, 'rb') as r, open(expected_pkl, 'rb') as e:
         result = dill.load(r)
         expected = dill.load(e)
-        print(result)
-        print(expected)
 
-        if not attrs:
-            assert result == expected
-        else:
-            print(vars(expected).keys())
-            for attr in attrs:
-                result_attr = getattr(result, attr)
-                expected_attr = getattr(expected, attr)
-                assert type(result_attr) == type(expected_attr)
+        try:
+            if not attrs:
+                assert result == expected
+            else:
+                for attr in attrs:
+                    result_attr = getattr(result, attr)
+                    expected_attr = getattr(expected, attr)
+                    assert type(result_attr) == type(expected_attr)
 
-                if isinstance(result_attr, np.ndarray):
-                    assert np.allclose(result_attr, expected_attr, atol=atol)
-                else:
-                    assert result_attr == expected_attr
+                    if isinstance(result_attr, np.ndarray):
+                        assert np.allclose(result_attr, expected_attr, atol=atol)
+                    else:
+                        assert result_attr == expected_attr
+        except Exception as e:
+            logging.warning(f'Expected attrs:\n{vars(expected).keys()}')
+            logging.warning(e)
+            logging.warning(f'Result:\n{vars(result)}')
+            logging.warning(f'Expected:\n{vars(expected)}')
+            assert False
 
-# TODO check expected
 def test_MakeSitesOnlyVcfAndNumpyVariants():
     vcf = f'{test_resources_dir}/MakeSitesOnlyVcfAndNumpyVariants/inputs/test.sites.vcf'
     output = f'{output_dir}/test.numpy_variants.pkl'
+    expected = f'{output_dir}/test.numpy_variants.pkl'
 
     obgraph_cli.run_argument_parser([
         'make_numpy_variants',
         '-v', vcf,
         '-o', output])
+
+    assert_equals_pkl(output, expected, attrs=['header', 'variants'])
 
 def test_MakeChromosomeGenotypeMatrix():
     vcf_gz = f'{test_resources_dir}/MakeChromosomeGenotypeMatrix/inputs/test.preprocessed.bi.vcf.gz'
@@ -113,12 +121,15 @@ def test_MakeChromosomeHaplotypeToNodes():
     genotype_matrix = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.genotype_matrix.pkl'
     chromosome = 'chr1'
     output = f'{output_dir}/test.{chromosome}.haplotype_to_nodes.pkl'
+    expected = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/expected/test.{chromosome}.haplotype_to_nodes.pkl'
 
     obgraph_cli.run_argument_parser([
         'make_haplotype_to_nodes_bnp',
         '-g', variant_to_nodes,
         '-v', genotype_matrix,
         '-o', output])
+
+    assert_equals_pkl(output, expected, attrs=['_index'])
 
 def test_MergeChromosomeGraphs():
     chr1_graph = f'{test_resources_dir}/MergeChromosomeGraphs/inputs/test.chr1.obgraph.pkl'
@@ -431,7 +442,6 @@ def test_MakeIndexBundle():
         '-i', kmer_index_only_variants_with_revcomp,
         '-o', output])
 
-# TODO check expected
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_Case(num_threads):
     kmer_index_only_variants_with_revcomp = f'{test_resources_dir}/large/test.kmer_index_only_variants_with_revcomp.pkl'
@@ -444,6 +454,8 @@ def test_Case(num_threads):
     ignore_helper_model = 'false'
     output_kmer_counts = f'{output_dir}/HG00731.kmer_counts.npy'
     output_vcf = f'{output_dir}/HG00731.vcf'
+    expected_kmer_counts = f'{test_resources_dir}/Case/expected/HG00731.kmer_counts.npy'
+    expected_vcf = f'{test_resources_dir}/Case/expected/HG00731.vcf'
 
     kmer_mapper_cli.run_argument_parser([
         'map',
@@ -460,3 +472,10 @@ def test_Case(num_threads):
         '--average-coverage', average_coverage,
         '-I', ignore_helper_model,
         '-o', output_vcf])
+
+    # TODO
+    # assert np.all(np.load(output_kmer_counts) == np.load(expected_kmer_counts))
+
+    with open(output_vcf, 'r') as r, open(expected_vcf, 'r') as e:
+        diff = difflib.ndiff(r.readlines(), e.readlines())
+        assert not [l for l in diff if l.startswith('+ ') or l.startswith('- ')]
