@@ -473,8 +473,7 @@ def test_Case(num_threads):
         '-I', ignore_helper_model,
         '-o', output_vcf])
 
-    # TODO
-    # assert np.all(np.load(output_kmer_counts) == np.load(expected_kmer_counts))
+    assert np.all(np.load(output_kmer_counts) == np.load(expected_kmer_counts))
 
     with open(output_vcf, 'r') as r, open(expected_vcf, 'r') as e:
         diff = difflib.ndiff(r.readlines(), e.readlines())
