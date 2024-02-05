@@ -21,4 +21,4 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite
     - name: Run integration pytests
-      run: docker run -t kage-lite-development/kage-lite pytest kage/tests/test_pipeline.py
+      run: docker run -v /kage-lite:/kage-lite -t kage-lite-development/kage-lite pytest /kage-lite/kage/tests/test_pipeline.py
