@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import pathlib
 import obgraph.command_line_interface as obgraph_cli
 import graph_kmer_index.command_line_interface as graph_kmer_index_cli
 import kage.command_line_interface as kage_cli
@@ -11,7 +12,9 @@ import difflib
 
 from obgraph.haplotype_nodes import DiscBackedHaplotypeToNodes
 
-test_resources_dir = 'resources'
+parent_dir = pathlib.Path(__file__).parent
+
+test_resources_dir = f'{parent_dir}/resources'
 output_dir = '/tmp'
 
 # tests replicate individual tasks or portions of the WDL workflow using the same test data

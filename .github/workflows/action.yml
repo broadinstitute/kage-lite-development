@@ -8,11 +8,13 @@ on:
 
 jobs:
 
-  buildDocker:
+  buildDockerAndRunPytests:
 
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite:$(date +%s)
+      run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite
+    - name: Run integration pytests
+      run: docker run --tag kage-lite-development/kage-lite pytest kage/tests/test_pipeline.py
