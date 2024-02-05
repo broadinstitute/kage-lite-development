@@ -212,9 +212,9 @@ def test_MakeHelperModel(num_threads):
     window_size = '100'
     num_threads = str(num_threads)
     output_genotype_matrix = f'{output_dir}/test.genotype_matrix.pkl'
-    output_prefix = f'{output_dir}/test'
-    output_helper_model = f'{output_prefix}.helper_model.pkl'
-    output_helper_model_combo_matrix = f'{output_prefix}.helper_model_combo_matrix.pkl'
+    output_prefix = f'{output_dir}/test.helper_model'
+    output_helper_model = f'{output_prefix}.pkl'
+    output_helper_model_combo_matrix = f'{output_prefix}_combo_matrix.pkl'
     expected_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/expected/test.genotype_matrix.pkl'
     expected_helper_model = f'{test_resources_dir}/MakeHelperModel/expected/test.helper_model.pkl'
     expected_helper_model_combo_matrix = f'{test_resources_dir}/MakeHelperModel/expected/test.helper_model_combo_matrix.pkl'
