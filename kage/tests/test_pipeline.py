@@ -9,6 +9,8 @@ import dill
 import logging
 import difflib
 
+from obgraph.haplotype_nodes import DiscBackedHaplotypeToNodes
+
 test_resources_dir = 'resources'
 output_dir = '/tmp'
 
@@ -115,7 +117,6 @@ def test_MakeChromosomeVariantToNodes():
 
     assert_equals_pkl(output, expected, attrs=['ref_nodes', 'var_nodes'])
 
-# TODO check expected, assert_equals_pkl doesn't work with DiscBackedHaplotypeToNodes
 def test_MakeChromosomeHaplotypeToNodes():
     variant_to_nodes = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.variant_to_nodes.pkl'
     genotype_matrix = f'{test_resources_dir}/MakeChromosomeHaplotypeToNodes/inputs/test.chr1.genotype_matrix.pkl'
@@ -129,7 +130,13 @@ def test_MakeChromosomeHaplotypeToNodes():
         '-v', genotype_matrix,
         '-o', output])
 
-    assert_equals_pkl(output, expected, attrs=['_index'])
+    output_haplotype_to_nodes = DiscBackedHaplotypeToNodes.from_file(output)
+    expected_haplotype_to_nodes = DiscBackedHaplotypeToNodes.from_file(expected)
+
+    assert output_haplotype_to_nodes.n_haplotypes() == expected_haplotype_to_nodes.n_haplotypes()
+
+    for n in range(output_haplotype_to_nodes.n_haplotypes()):
+        assert np.all(output_haplotype_to_nodes.get_nodes(n) == expected_haplotype_to_nodes.get_nodes(n))
 
 def test_MergeChromosomeGraphs():
     chr1_graph = f'{test_resources_dir}/MergeChromosomeGraphs/inputs/test.chr1.obgraph.pkl'
@@ -172,20 +179,27 @@ def test_MergeChromosomeVariantToNodes():
     assert_equals_pkl(output_num_nodes, expected_num_nodes, attrs=[])
     assert_equals_pkl(output_variant_to_nodes, expected_variant_to_nodes, attrs=['ref_nodes', 'var_nodes'])
 
-# TODO check expected, assert_equals_pkl doesn't work with DiscBackedHaplotypeToNodes
 def test_MergeChromosomeHaplotypeToNodes():
     chr1_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr1.haplotype_to_nodes.pkl'
     chr2_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.chr2.haplotype_to_nodes.pkl'
     num_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/inputs/test.num_nodes.pkl'
     output_prefix = f'{output_dir}/test'
-    output_haplotype_to_nodes = f'{output_prefix}.haplotype_to_nodes.pkl.haplotype_nodes'
-    expected_haplotype_to_nodes = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/expected/test.haplotype_to_nodes.pkl.haplotype_nodes'
+    output = f'{output_prefix}.haplotype_to_nodes.pkl'
+    expected = f'{test_resources_dir}/MergeChromosomeHaplotypeToNodes/expected/test.haplotype_to_nodes.pkl'
 
     lite_utils_cli.run_argument_parser([
         'merge_chromosome_haplotype_to_nodes',
         '--haplotype-to-nodes', chr1_haplotype_to_nodes, chr2_haplotype_to_nodes,
         '--num-nodes', num_nodes,
         '--output-prefix', output_prefix])
+
+    output_haplotype_to_nodes = DiscBackedHaplotypeToNodes.from_file(output)
+    expected_haplotype_to_nodes = DiscBackedHaplotypeToNodes.from_file(expected)
+
+    assert output_haplotype_to_nodes.n_haplotypes() == expected_haplotype_to_nodes.n_haplotypes()
+
+    for n in range(output_haplotype_to_nodes.n_haplotypes()):
+        assert np.all(output_haplotype_to_nodes.get_nodes(n) == expected_haplotype_to_nodes.get_nodes(n))
 
 @pytest.mark.parametrize("num_threads", [2]) # single thread has a bug
 def test_MakeHelperModel(num_threads):
@@ -218,8 +232,7 @@ def test_MakeHelperModel(num_threads):
     assert_equals_pkl(output_helper_model, expected_helper_model, attrs=['helper_variants'])
     assert_equals_pkl(output_helper_model_combo_matrix, expected_helper_model_combo_matrix, attrs=['matrix'])
 
-# TODO result depends on num_threads
-@pytest.mark.parametrize("num_threads", [6])
+@pytest.mark.parametrize("num_threads", [1, 2])
 def test_SampleChromosomeKmersFromLinearReference(num_threads):
     chromosome_reference_fasta = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/inputs/chromosome.fa'
     num_threads = str(num_threads)
@@ -229,7 +242,7 @@ def test_SampleChromosomeKmersFromLinearReference(num_threads):
     chromosome = 'chr1'
     chromosome_length = '1000000'
     output = f'{output_dir}/test.{chromosome}.linear_kmers.pkl'
-    expected = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/expected/test.{chromosome}.linear_kmers.pkl'
+    expected = f'{test_resources_dir}/SampleChromosomeKmersFromLinearReference/expected/test.{chromosome}.num_threads{num_threads}.linear_kmers.pkl'
 
     graph_kmer_index_cli.run_argument_parser([
         'make',
