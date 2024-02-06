@@ -24,6 +24,14 @@ jobs:
       - name: Check out LFS objects
         run: git lfs pull
 
+  showCondaEnvironment:
+    needs: [buildDocker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Show Conda environment
+        run: docker run -t kage-lite-development/kage-lite conda list
+
   runTests:
     needs: [buildDocker, checkoutLFS]
     runs-on: ubuntu-latest
