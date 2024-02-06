@@ -1,7 +1,6 @@
 import numpy as np
 cimport numpy as np
 cimport cython
-from cython.parallel import prange
 
 cdef class CythonReferenceKmerIndex:
     cdef unsigned long[:] ref_position_to_index

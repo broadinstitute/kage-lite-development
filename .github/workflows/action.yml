@@ -8,11 +8,19 @@ on:
 
 jobs:
 
-  buildDocker:
+  build:
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite:$(date +%s)
+      run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite
+    - name: Show Conda environment
+      run: docker run -t kage-lite-development/kage-lite conda list
+    - name: Check out LFS objects
+      run: git lfs pull
+    - name: Run integration pytests
+      run: docker run --shm-size 4G -v ${{ github.workspace }}/kage/tests/resources:/kage-lite/kage/tests/resources -t kage-lite-development/kage-lite pytest /kage-lite/kage/tests/test_pipeline.py

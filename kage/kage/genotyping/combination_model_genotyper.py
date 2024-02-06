@@ -51,8 +51,8 @@ class CombinationModelGenotyper:
         log_memory_usage_now("Genotyping, before getting observed counts")
 
         # Get observed counts
-        observed_ref_nodes = self._node_counts.get_node_count_array()[ref_nodes]
-        observed_alt_nodes = self._node_counts.get_node_count_array()[alt_nodes]
+        observed_ref_nodes = self._node_counts[ref_nodes]
+        observed_alt_nodes = self._node_counts[alt_nodes]
 
         # One model for ref nodes and one for alt nodes
         logging.info("Creating combomodels")
@@ -64,14 +64,6 @@ class CombinationModelGenotyper:
         if self.config.ignore_helper_model:
             logging.info("Ignoring helper model! Will not use helper variants to improve genotype accuracy")
             final_model = combination_model_both
-        elif self.config.ignore_helper_variants:
-            assert False, "Not supported now"
-            #logging.info("Using NoHelperModel")
-            #final_model = NoHelperModel(combination_model_both,
-            #                            self._genotype_frequencies,
-            #                            self._tricky_variants,
-            #                            self._estimated_mapped_haplotype_coverage
-            #                            )
         else:
             final_model = HelperModel(
                 combination_model_both,
@@ -79,7 +71,6 @@ class CombinationModelGenotyper:
                 self.index.combination_matrix.matrix,
                 self._tricky_variants,
                 self._estimated_mapped_haplotype_coverage,
-                ignore_helper_variants=self.config.ignore_helper_variants,
                 gpu=self.config.use_gpu,
                 n_threads=self.config.n_threads
             )

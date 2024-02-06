@@ -1,21 +1,20 @@
-import multiprocessing
 import logging
-import time
-import numpy as np
+import logging
 import os
-
-import shared_memory_wrapper.shared_memory
-from .shared_memory_v2 import object_to_shared_memory, object_from_shared_memory
-from .shared_memory import remove_shared_memory
-from multiprocessing import Pool, Queue, Process
 import queue
-from .util import chunker
+import time
+from multiprocessing import Queue, Process
+
+import numpy as np
+
+from .shared_memory import remove_shared_memory
+from .shared_memory_v2 import object_to_shared_memory, object_from_shared_memory
+
 
 """
-Module that implements a simpel map reduce method
-where each process re-uses the same shared arrays for efficiency
+Module that implements a simple map-reduce method
+where each process reuses the same shared arrays for efficiency
 """
-
 
 
 class FunctionWrapper:
@@ -55,8 +54,7 @@ class FunctionWrapper:
             t_prev_job = time.perf_counter()
 
 
-def additative_shared_array_map_reduce(func, mapper, result_array, shared_data, n_threads=4):
-    #pool = get_shared_pool()
+def additive_shared_array_map_reduce(func, mapper, result_array, shared_data, n_threads=4):
     shared_queue = Queue()
     shared_data_id = object_to_shared_memory(shared_data)
 
@@ -65,7 +63,6 @@ def additative_shared_array_map_reduce(func, mapper, result_array, shared_data, 
     result_arrays = [
         object_to_shared_memory(np.zeros_like(result_array)) for _ in range(n_threads)
     ]
-    #functions = FunctionWrapper(func, shared_data_id)
     processes = [Process(target=FunctionWrapper(func, shared_data_id), args=(shared_queue,result_array)) for result_array in result_arrays]
 
     # start all processes

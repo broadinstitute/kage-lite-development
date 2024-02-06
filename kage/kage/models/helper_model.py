@@ -71,42 +71,6 @@ def calc_argmax(count_matrix):
     return np.sum(np.max(count_matrix, axis=M), axis=-1) / count_matrix.sum(axis=(M, H))
 
 
-def make_helper_model_from_genotype_matrix_and_node_counts(
-    genotype_matrix, node_counts, variant_to_nodes, window_size=1000, dummy_count=10
-):
-    logging.info("Using dummy count scale %d" % dummy_count)
-    genotype_matrix = genotype_matrix.matrix
-    # print(genotype_matrix.matrix)
-    # genotype_matrix = convert_genotype_matrix(old_genotype_matrix)
-    nodes_tuple = (variant_to_nodes.ref_nodes, variant_to_nodes.var_nodes)
-    expected_ref, expected_alt = (
-        node_counts.certain[nodes] + node_counts.frequencies[nodes]
-        for nodes in nodes_tuple
-    )
-
-    genotype_counts = np.array(
-        [np.sum(genotype_matrix == i, axis=-1) for i in range(3)]
-    ).T
-    mean_genotype_counts = np.mean(genotype_counts, axis=0)
-    mean_genotype_counts *= dummy_count / np.sum(mean_genotype_counts)
-    genotype_counts = genotype_counts + mean_genotype_counts
-    mean_genotype_counts = (np.tile(mean_genotype_counts, 3).reshape(3, 3) / 3)[
-        None, ...
-    ]
-
-    genotype_probs = genotype_counts / genotype_counts.sum(axis=-1, keepdims=True)
-    weights = get_prob_weights(expected_ref, expected_alt, genotype_probs)
-
-    score_func = get_weighted_calc_func(calc_likelihood, weights, 0.4)
-    return make_helper_model_from_genotype_matrix(
-        genotype_matrix,
-        None,
-        score_func=score_func,
-        dummy_count=mean_genotype_counts,
-        window_size=window_size,
-    )
-
-
 def get_helper_posterior(genotype_combo_matrix, global_helper_weight=5):
     # logging.info("Dtype genotype combo matrix: %s" % genotype_combo_matrix.dtype)
     helper_sum = np.sum(genotype_combo_matrix, axis=M, keepdims=True)

@@ -30,13 +30,13 @@ class NumpyVariants:
             dill.dump(self, f)
         logging.info("Saved to %s" % file_name)
 
-    def to_vcf_with_genotypes(self, file_name, sample_name, genotypes, add_header_lines=None, ignore_homo_ref=False, add_genotype_likelyhoods=None):
+    def to_vcf_with_genotypes(self, file_name, sample_name, genotypes, add_header_lines=None, ignore_homo_ref=False, add_genotype_likelihoods=None):
         logging.info("Writing to file %s" % file_name)
         if ignore_homo_ref:
             logging.info("Will not write variants with genotype 0/0")
 
-        if add_genotype_likelyhoods is not None:
-            p = add_genotype_likelyhoods
+        if add_genotype_likelihoods is not None:
+            p = add_genotype_likelihoods
             genotype_likelihoods = p * np.log10(np.e)
 
         with open(file_name, "w") as f:
@@ -61,7 +61,7 @@ class NumpyVariants:
                     logging.info("%d variants written to file." % i)
 
                 line = "%s\t%s\n" % (variant, genotype)
-                if add_genotype_likelyhoods is not None:
+                if add_genotype_likelihoods is not None:
                     """
                     #likelyhoods = add_genotype_likelyhoods[i]
                     phred_likelyhoods = [

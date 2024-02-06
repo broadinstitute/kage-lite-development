@@ -279,7 +279,7 @@ task KAGECase {
         File? monitoring_script
 
         String kmer_mapper_args = "-c 100000000"
-        Boolean? ignore_helper_model = true
+        Boolean? ignore_helper_model = false
         String? kage_genotype_extra_args
 
 

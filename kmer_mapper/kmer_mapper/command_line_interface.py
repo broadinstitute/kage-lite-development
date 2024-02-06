@@ -21,7 +21,7 @@ from shared_memory_wrapper.shared_memory import remove_shared_memory_in_session,
 from shared_memory_wrapper import object_to_shared_memory, object_from_shared_memory
 import bionumpy as bnp
 from kmer_mapper.mapper import map_kmers_to_graph_index
-from shared_memory_wrapper.shared_array_map_reduce import additative_shared_array_map_reduce
+from shared_memory_wrapper.shared_array_map_reduce import additive_shared_array_map_reduce
 
 
 def main():
@@ -108,12 +108,12 @@ def map_bnp(args):
         args_dict = vars(args)
         args_dict.pop("func")
         t_before_map = time.perf_counter()
-        node_counts = additative_shared_array_map_reduce(map_cpu,
-                                                         chunks,
-                                                         initial_data,
-                                                         (args_dict, kmer_index),
-                                                         n_threads=args.n_threads
-                                                         )
+        node_counts = additive_shared_array_map_reduce(map_cpu,
+                                                       chunks,
+                                                       initial_data,
+                                                       (args_dict, kmer_index),
+                                                       n_threads=args.n_threads
+                                                       )
         logging.info("Time spent only on hashing and counting hashes: %.4f" % (time.perf_counter()-t_before_map))
 
         if isinstance(kmer_index, CounterKmerIndex):

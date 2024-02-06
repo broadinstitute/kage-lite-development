@@ -15,6 +15,7 @@ workflow KAGEPanelWithPreprocessing {
     input {
         File input_vcf_gz
         File input_vcf_gz_tbi
+        Boolean do_preprocessing = true # if false, input_vcf_gz is assumed to contain only biallelics
         File reference_fasta
         File reference_fasta_fai
         String output_prefix
@@ -31,21 +32,26 @@ workflow KAGEPanelWithPreprocessing {
         Int? cpu_make_count_model
     }
 
-    call PreprocessPanelVCF {
-        input:
-            input_vcf_gz = input_vcf_gz,
-            input_vcf_gz_tbi = input_vcf_gz_tbi,
-            chromosomes = chromosomes,
-            output_prefix = output_prefix,
-            docker = docker,
-            monitoring_script = monitoring_script,
-            runtime_attributes = runtime_attributes
+    if (do_preprocessing) {
+        call PreprocessPanelVCF {
+            input:
+                input_vcf_gz = input_vcf_gz,
+                input_vcf_gz_tbi = input_vcf_gz_tbi,
+                chromosomes = chromosomes,
+                output_prefix = output_prefix,
+                docker = docker,
+                monitoring_script = monitoring_script,
+                runtime_attributes = runtime_attributes
+        }
     }
+
+    File preprocessed_panel_bi_vcf_gz = select_first([PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz, input_vcf_gz])
+    File preprocessed_panel_bi_vcf_gz_tbi = select_first([PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi, input_vcf_gz_tbi])
 
     call MakeSitesOnlyVcfAndNumpyVariants {
         input:
-            input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-            input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+            input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+            input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
             chromosomes = chromosomes,
             output_prefix = output_prefix,
             docker = docker,
@@ -56,8 +62,8 @@ workflow KAGEPanelWithPreprocessing {
     scatter (i in range(length(chromosomes))) {
         call MakeChromosomeGenotypeMatrix {
             input:
-                input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-                input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+                input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+                input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
                 chromosome = chromosomes[i],
                 output_prefix = output_prefix,
                 docker = docker,
@@ -67,8 +73,8 @@ workflow KAGEPanelWithPreprocessing {
 
         call MakeChromosomeGraph {
             input:
-                input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz,
-                input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_bi_vcf_gz_tbi,
+                input_vcf_gz = preprocessed_panel_bi_vcf_gz,
+                input_vcf_gz_tbi = preprocessed_panel_bi_vcf_gz_tbi,
                 reference_fasta = reference_fasta,
                 chromosome = chromosomes[i],
                 output_prefix = output_prefix,
@@ -280,7 +286,7 @@ workflow KAGEPanelWithPreprocessing {
             numpy_variants = MakeSitesOnlyVcfAndNumpyVariants.numpy_variants,
             refined_sampling_count_model = RefineCountModel.refined_sampling_count_model,
             tricky_variants = FindTrickyVariants.tricky_variants,
-            helper_variants = MakeHelperModel.helper_model,
+            helper_model = MakeHelperModel.helper_model,
             helper_model_combo_matrix = MakeHelperModel.helper_model_combo_matrix,
             kmer_index_only_variants_with_revcomp = MakeVariantKmerIndexWithReverseComplements.kmer_index_only_variants_with_revcomp,
             output_prefix = output_prefix,
@@ -318,7 +324,7 @@ task PreprocessPanelVCF {
         fi
 
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
-            bcftools norm --no-version -m+ -Ou | \
+            bcftools norm --no-version -m+ -N -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.joined.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.joined.vcf.gz
 
@@ -328,7 +334,7 @@ task PreprocessPanelVCF {
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
 
-        bcftools norm --no-version -m- ~{output_prefix}.preprocessed.vcf.gz -Ou | \
+        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.vcf.gz -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.split.vcf.gz -- -t AF,AC,AN
         bcftools index -t ~{output_prefix}.preprocessed.split.vcf.gz
 
@@ -340,7 +346,7 @@ task PreprocessPanelVCF {
         bcftools index -t ~{output_prefix}.preprocessed.bi.vcf.gz
 
         bcftools view --no-version --min-alleles 3  ~{output_prefix}.joined.vcf.gz -Ou | \
-            bcftools norm --no-version -m- -Ou | \
+            bcftools norm --no-version -m- -N -Ou | \
             bcftools view --no-version --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
             bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.multi.split.vcf.gz -- -t AF,AC,AN
@@ -898,7 +904,6 @@ task MakeChromosomeHaplotypeToNodes {
 
         String docker
         File? monitoring_script
-        Int? kmer_length = 31
 
         RuntimeAttributes runtime_attributes = {}
     }
@@ -913,7 +918,6 @@ task MakeChromosomeHaplotypeToNodes {
         fi
 
         obgraph make_haplotype_to_nodes_bnp \
-            -d true \
             -g ~{chromosome_variant_to_nodes} \
             -v ~{chromosome_genotype_matrix} \
             -o ~{output_prefix}.~{chromosome}.haplotype_to_nodes.pkl
@@ -1302,7 +1306,7 @@ task MakeIndexBundle {
         File numpy_variants
         File refined_sampling_count_model
         File tricky_variants
-        File helper_variants
+        File helper_model
         File helper_model_combo_matrix
         File kmer_index_only_variants_with_revcomp
         String output_prefix
@@ -1327,7 +1331,7 @@ task MakeIndexBundle {
             -v ~{numpy_variants} \
             -A ~{refined_sampling_count_model} \
             -x ~{tricky_variants} \
-            -f ~{helper_variants} \
+            -f ~{helper_model} \
             -F ~{helper_model_combo_matrix} \
             -i ~{kmer_index_only_variants_with_revcomp} \
             -o ~{output_prefix}.index.pkl

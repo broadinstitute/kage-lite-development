@@ -1,11 +1,10 @@
 .idea/
 dist/
+*.c
 *.egg-info/
 *.shm
 *.npz
-*.npy
 *.deb
-*.fa
 *.so
 *.backup
 __pycache__

@@ -89,9 +89,6 @@ class Graph:
 
         return True
 
-    def set_numeric_node_sequences(self):
-        raise Exception("Unsupported")
-
     def get_all_nodes(self):
         node_to_n_edges = self.edges.shape.lengths   # a bit hacky, accessing length of RaggedShape in npstructures
         return np.union1d(np.where(self.nodes != 0)[0], np.where(node_to_n_edges > 0)[0])
@@ -99,8 +96,6 @@ class Graph:
         #return np.where(self.nodes != 0)[0]
 
     def __str__(self):
-        #mutable_graph = self.to_mutable_graph()
-        #return str(mutable_graph)
         return "Obgraph"
 
     def __repr__(self):
@@ -126,11 +121,6 @@ class Graph:
             return np.ones(len(nodes))
         return self.allele_frequencies[nodes]
 
-    def get_node_allele_frequency(self, node):
-        if self.allele_frequencies is None:
-            return 1.0
-        return self.allele_frequencies[node]
-
     def get_node_subsequence(self, node, start, end):
         return self.get_node_sequence(node)[int(start):int(end)]
 
@@ -155,7 +145,6 @@ class Graph:
 
         return self.get_numeric_node_sequence(int(node))[int(offset)]
 
-
     def get_numeric_node_sequences_by_chromosomes(self, nodes):
         assert nodes[0] == self.chromosome_start_nodes[0], "First node must be first chromosome node"
 
@@ -168,21 +157,8 @@ class Graph:
         for start, end in zip(split_positions[0:-1], split_positions[1:]):
             yield self.get_numeric_node_sequences(nodes[start:end])
 
-
     def get_numeric_node_sequences(self, nodes):
         return self.sequences[nodes].ravel()
-
-    def get_nodes_sequences2(self, nodes):
-        raise NotImplementedError("Use get_nodes_sequences instead")
-
-    def get_nodes_sequence(self, nodes):
-        # todo: This is slow, should be fixed
-        sequences = []
-
-        for node in nodes:
-            sequences.extend(self.get_node_sequence(node))
-
-        return ''.join(sequences)
 
     def get_node_offset_at_chromosome_and_chromosome_offset(self, chromosome, offset):
         chromosome_position = chromosome - 1
@@ -216,21 +192,6 @@ class Graph:
         chromosome_offset = self.get_ref_offset_at_node(chromosome_start_node)
         real_offset = int(chromosome_offset + offset)
         return self.get_node_at_ref_offset(real_offset)
-
-
-    def get_linear_ref_nodes_between_offsets(self, chromosome, start_offset, end_offset):
-        # todo
-        chromosome_position = chromosome - 1
-        try:
-            chromosome_start_node = self.chromosome_start_nodes[chromosome_position]
-        except IndexError:
-            logging.error(
-                "Could not find chromosome start position for chromosome %d. Chromosome start nodes are %s" % (
-                chromosome, self.chromosome_start_nodes))
-            raise
-
-        chromosome_offset = self.get_ref_offset_at_node(chromosome_start_node)
-        return np.unique(self.ref_offset_to_node[int(chromosome_offset+start_offset):int(chromosome_offset+end_offset)])
 
     def get_edges(self, node):
         if node >= len(self.edges):
@@ -319,23 +280,6 @@ class Graph:
     def from_file(cls, file_name):
         return from_file(file_name)
 
-    def get_flat_graph(self):
-        node_ids = list(np.where(self.nodes > 0)[0])
-        node_sizes = list(self.nodes[node_ids])
-        node_sequences = []
-        for node in node_ids:
-            node_sequences.append(list(self.get_node_sequence(node)))
-
-        linear_ref_nodes = list(self.linear_ref_nodes())
-        from_nodes = []
-        to_nodes = []
-        for from_node in node_ids:
-            for to_node in self.get_edges(from_node):
-                from_nodes.append(from_node)
-                to_nodes.append(to_node)
-
-        return node_ids, node_sequences, node_sizes, from_nodes, to_nodes, linear_ref_nodes, self.chromosome_start_nodes
-
     @classmethod
     def from_dicts(cls, node_sequences, edges, linear_ref_nodes, chromosome_start_nodes=None):
         assert linear_ref_nodes is not None
@@ -400,147 +344,6 @@ class Graph:
             logging.info("Chromosome start nodes already set to %s" % chromosome_start_nodes)
 
         return Graph(node_sizes_array, sequences, RaggedArray(to_nodes, n_edges, dtype=np.uint32), node_to_ref_offset, ref_offset_to_node, chromosome_start_nodes)
-        #return Graph.from_flat_nodes_and_edges(nodes, node_sequences, node_sizes, to_nodes, n_edges, np.array(linear_ref_nodes))
-
-    @classmethod
-    def from_flat_nodes_and_edges(cls, node_ids, node_sequences, node_sizes, to_nodes, n_edges, linear_ref_nodes, chromosome_start_nodes):
-        raise Exception("This method has been removed.")
-
-        logging.info("Chromosome start nodes are: %s" % chromosome_start_nodes)
-
-        #assert node_ids[0] == 1, "Nodes must start with id 1. First id now is %d" % node_ids[0]
-
-        max_node = np.max(node_ids)
-        nodes = np.zeros(max_node+1, dtype=np.uint32)
-        nodes[node_ids] = node_sizes
-
-        # Node sequences
-        node_sorting = np.argsort(node_ids)
-
-        sequences_sorted = node_sequences[node_sorting]
-        logging.info("Making node sequences")
-        sequence = np.array(list(''.join(sequences_sorted)))
-        numeric_sequence = convert_sequence_array_to_numeric(sequence)
-        sequences = RaggedArray(numeric_sequence, nodes, dtype=np.uint8)
-
-
-
-
-
-        logging.info("Sorting nodes")
-        #sorting = np.argsort(from_nodes)
-        #from_nodes = from_nodes[sorting]
-        #to_nodes = to_nodes[sorting]
-
-        edges = RaggedArray(to_nodes, n_edges, dtype=np.uint32)
-        print(edges)
-
-        """
-        logging.info("Making node index")
-        diffs = np.ediff1d(from_nodes, to_begin=1)
-        positions_of_unique_nodes = np.nonzero(diffs)[0]
-        unique_nodes = from_nodes[positions_of_unique_nodes]
-
-        logging.info("Making node to edge index")
-        node_to_edge_index = np.zeros(max_node+1, dtype=np.uint32)
-        node_to_n_edges = np.zeros(max_node+1, dtype=np.uint8)
-        node_to_edge_index[unique_nodes] = positions_of_unique_nodes
-        n_edges_numbers = np.ediff1d(positions_of_unique_nodes, to_end=len(from_nodes)-positions_of_unique_nodes[-1])
-        node_to_n_edges[unique_nodes] = n_edges_numbers
-        """
-
-        #logging.info("Finding ref offsets")
-        node_to_ref_offset = np.zeros(max_node+1, np.uint64)
-        try:
-            ref_node_sizes = nodes[linear_ref_nodes]
-        except IndexError:
-            logging.error("Problem with linear ref nodes, which are %s" % linear_ref_nodes)
-            print(type(linear_ref_nodes))
-            raise
-        #print("Ref node sizes: %s"  % ref_node_sizes)
-        ref_offsets = np.cumsum(ref_node_sizes)
-        #print("Ref offsets: %s"  % ref_offsets)
-        node_to_ref_offset[linear_ref_nodes[1:]] = ref_offsets[:-1]
-
-        # Find last node to add to linear ref size
-        last_node_in_graph = np.argmax(node_to_ref_offset)
-        last_node_size = nodes[last_node_in_graph]
-        #logging.info("Last node in graph is %d with size %d" % (last_node_in_graph, last_node_size))
-
-        ref_offset_to_node = np.zeros(int(np.max(node_to_ref_offset)) + last_node_size)
-        index_positions = np.cumsum(ref_node_sizes)[:-1]
-        #logging.info("INdex positions: %s" % index_positions)
-        #logging.info("Linear ref nodes: %s" % linear_ref_nodes)
-        #logging.info("Diff linear ref nodes: %s" % np.diff(linear_ref_nodes))
-        ref_offset_to_node[index_positions] = np.diff(linear_ref_nodes)
-        ref_offset_to_node[0] = linear_ref_nodes[0]
-        #logging.info("Ref offset to node 1: %s" % ref_offset_to_node)
-        ref_offset_to_node = np.cumsum(ref_offset_to_node, dtype=np.uint32)
-
-        return cls(nodes, sequences, edges, node_to_ref_offset, ref_offset_to_node, chromosome_start_nodes)
-
-    @classmethod
-    def from_vg_json_files(cls, file_names):
-
-        node_sequences = []
-        node_ids = []
-        node_sizes = []
-        edges_from = []
-        edges_to = []
-        linear_ref_nodes = []
-        chromosomes = []
-        chromosome_start_nodes = []
-        n_nodes_added = 0
-        n_edges_added = 0
-        chromosome_offset = 0
-        for file_name in file_names:
-            # Hackish (send in chromosome on comand line later):
-            path_found = False
-            file = open(file_name)
-            for line in file:
-                json_object = json.loads(line)
-                if "node" in json_object:
-                    for node in json_object["node"]:
-                        id = int(node["id"])
-                        node_ids.append(id)
-                        node_sizes.append(len(node["sequence"]))
-                        node_sequence = list(re.sub(r'[^acgtn]', "n", node["sequence"].lower()))
-                        node_sequences.append(node_sequence)
-                        n_nodes_added += 1
-                        if n_nodes_added % 100000 == 0:
-                            logging.info("%d nodes added" % n_nodes_added)
-
-                if "edge" in json_object:
-                    for edge in json_object["edge"]:
-                        from_node = int(edge["from"])
-                        to_node = int(edge["to"])
-
-                        edges_from.append(from_node)
-                        edges_to.append(to_node)
-                        n_edges_added += 1
-                        if n_edges_added % 100000 == 0:
-                            logging.info("%d edges added" % n_edges_added)
-
-                if "path" in json_object:
-                    for path in json_object["path"]:
-                        assert not path_found, "Found multiple paths, not sure which is the reference path. Path now:" % path["name"]
-                        logging.info("Found path %s, assuming this is the reference path" % path["name"])
-                        nodes_in_path = [mapping["position"]["node_id"] for mapping in path["mapping"]]
-                        linear_ref_nodes.extend(nodes_in_path)
-                        chromosome_start_nodes.append(nodes_in_path[0])
-                        path_found = True
-
-                logging.info("Chromosome start nodes are: %s" % chromosome_start_nodes)
-
-        node_ids = np.array(node_ids)
-        node_sizes = np.array(node_sizes)
-        edges_from = np.array(edges_from)
-        edges_to = np.array(edges_to)
-        linear_ref_nodes = np.array(linear_ref_nodes, dtype=np.uint32)
-        chromosome_start_nodes = np.array(chromosome_start_nodes, dtype=np.uint32)
-        logging.info("Chromosome start nodes are: %s" % chromosome_start_nodes)
-
-        return cls.from_flat_nodes_and_edges(node_ids, node_sequences, node_sizes, edges_from, edges_to, linear_ref_nodes, chromosome_start_nodes)
 
 
     def get_snp_nodes(self, ref_offset, reference_bases, variant_bases, chromosome=1):
@@ -559,21 +362,6 @@ class Graph:
 
         next_ref_pos = ref_offset + len(reference_bases)
         next_ref_node = self.get_node_at_chromosome_and_chromosome_offset(chromosome, next_ref_pos)
-
-        # attempt at simpler approach. Should only be one non-linear-ref-node that matches sequence?
-        """
-        possible_snp_nodes = [n[-1] for n in possible_snp_nodes if not self.is_linear_ref_node_or_linear_ref_dummy_node(n[-1])]
-        # only keep nodes 
-
-        if len(possible_snp_nodes) != 1:
-            logging.info("Multiple or no nodes (%s) nodes with sequence %s from node %d" % (possible_snp_nodes, variant_bases, prev_node))
-            logging.info(str([(node, self.get_node_sequence(node)) for node in possible_snp_nodes]))
-            logging.info("ref node is %d" % node)
-            logging.info("Ref offset is %d" % ref_offset)
-            raise Exception("Error")
-
-        return node, possible_snp_nodes[0]
-        """
 
         for possible_snp_node in possible_snp_nodes:
             # Not true if deletion before snp
@@ -775,80 +563,10 @@ class Graph:
 
         raise Exception("Couldn't find first graph node")
 
-    def get_haplotype_node_paths_for_haplotypes(self, variants, limit_to_n_haplotypes=10):
-        # First find all variant nodes that the haplotype has
-        haplotypes = list(range(0, limit_to_n_haplotypes))
-        variant_nodes_in_haplotype = defaultdict(set)
-        for i, variant in enumerate(variants):
-            if i % 1000 == 0:
-                logging.info("%d variants processed" % i)
-            reference_node, variant_node = self.get_variant_nodes(variant)
-
-            genotypes = variant.vcf_line.split()[9:]
-            for haplotype in haplotypes:
-                individual_number = haplotype // 2
-                haplotype_number = haplotype - individual_number * 2
-                haplotype_string = genotypes[individual_number].replace("/", "|").split("|")[haplotype_number]
-                if haplotype_string == "1":
-                    # Follows the variant, add variant node here
-                    variant_nodes_in_haplotype[haplotype].add(variant_node)
-                else:
-                    variant_nodes_in_haplotype[haplotype].add(reference_node)
-
-        # Iterate graph
-        nodes = np.zeros((len(haplotypes), len(self.nodes)), dtype=np.uint32)
-        for haplotype in haplotypes:
-            current_node = self.get_first_node()
-            i = 0
-            while True:
-                #nodes[haplotype].append(current_node)
-                nodes[haplotype, i] = current_node
-
-                next_nodes = self.get_edges(current_node)
-                if len(next_nodes) == 0:
-                    break
-
-                next_node = None
-                if len(next_nodes) == 1:
-                    next_node = next_nodes[0]
-                else:
-                    for potential_next in next_nodes:
-                        if potential_next in variant_nodes_in_haplotype[haplotype]:
-                            next_node = potential_next
-
-                assert next_node is not None
-
-                current_node = next_node
-                i += 1
-
-            nodes[haplotype, i] = current_node
-
-        return nodes
-
-    def get_reverse_edges_hashtable(self):
-        from_nodes = NpList(dtype=np.uint32)
-        to_nodes = NpList(dtype=np.uint32)
-
-        for node in self.get_all_nodes():
-            for edge in self.get_edges(node):
-                from_nodes.append(edge)
-                to_nodes.append(node)
-
-        return HashTable(from_nodes.get_nparray(), to_nodes.get_nparray())
-
-    def get_reverse_edges_dict(self):
-        reverse_edges = defaultdict(list)
-        for node in self.get_all_nodes():
-            for edge in self.get_edges(node):
-                reverse_edges[edge].append(node)
-
-        return reverse_edges
-
     def convert_chromosome_ref_offset_to_graph_ref_offset(self, chromosome_offset, chromosome):
         # Add the graph ref offset at this chromosome to the chromosome offset
         chromosome_position = 0 # chromosome - 1
         return int(self.node_to_ref_offset[self.chromosome_start_nodes[chromosome_position]] + chromosome_offset)
-
 
     def find_nodes_from_node_that_matches_sequence(self, from_node, sequence, nodes_found, all_paths_found):
         # hack to fix issue with "n"

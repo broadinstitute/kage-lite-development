@@ -1,6 +1,5 @@
 import gzip
 import logging
-# import numpy_indexed as npi
 import resource
 import sys
 from pathlib import PurePath
@@ -8,7 +7,7 @@ from pathlib import PurePath
 import bionumpy as bnp
 import numpy as np
 
-from graph_kmer_index.collision_free_kmer_index import MinimalKmerIndex, CounterKmerIndex, CollisionFreeKmerIndex
+from graph_kmer_index.collision_free_kmer_index import CounterKmerIndex, CollisionFreeKmerIndex
 from graph_kmer_index.index_bundle import IndexBundle
 from shared_memory_wrapper import from_file
 
@@ -53,8 +52,6 @@ def _get_kmer_index_from_args(args):
     else:
 
         cls = CollisionFreeKmerIndex
-        if "minimal" in args.kmer_index:
-            cls = MinimalKmerIndex
         try:
             kmer_index = cls.from_file(args.kmer_index)
             kmer_index.convert_to_int32()

@@ -24,29 +24,23 @@ def run_argument_parser(args):
         formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=50, width=100))
 
     def make(args):
-        if args.vcf is not None:
-            logging.info("Will create from vcf file")
-            reference = Fasta(args.reference_fasta_file)
+        logging.info("Will create from vcf file")
+        reference = Fasta(args.reference_fasta_file)
 
-            chromosome = args.chromosome
+        chromosome = args.chromosome
 
-            ref_sequence = str(reference[args.chromosome])
-            logging.info("Extracted sequence for chromosome %s. Length is: %d" % (chromosome, len(ref_sequence)))
-            variants = VcfVariants.from_vcf(args.vcf, limit_to_chromosome=chromosome)
-            logging.info("There are %d variants in chromosome" % len(variants))
+        ref_sequence = str(reference[args.chromosome])
+        logging.info("Extracted sequence for chromosome %s. Length is: %d" % (chromosome, len(ref_sequence)))
+        variants = VcfVariants.from_vcf(args.vcf, limit_to_chromosome=chromosome)
+        logging.info("There are %d variants in chromosome" % len(variants))
 
-            constructor = GraphConstructor(ref_sequence, variants)
-            graph = constructor.get_graph_with_dummy_nodes()
-            graph.to_file(args.out_file_name)
-        else:
-            logging.info("Will create from files %s" % args.vg_json_files)
-            graph = Graph.from_vg_json_files(args.vg_json_files)
-            graph.to_file(args.out_file_name)
+        constructor = GraphConstructor(ref_sequence, variants)
+        graph = constructor.get_graph_with_dummy_nodes()
+        graph.to_file(args.out_file_name)
 
     subparsers = parser.add_subparsers()
     subparser = subparsers.add_parser("make")
     subparser.add_argument("-o", "--out_file_name", required=True)
-    subparser.add_argument("-j", "--vg-json-files", nargs='+', required=False)
     subparser.add_argument("-v", "--vcf", required=False)
     subparser.add_argument("-r", "--reference_fasta_file", required=False)
     subparser.add_argument("-c", "--chromosome", required=False)
@@ -70,18 +64,13 @@ def run_argument_parser(args):
 
 
     def make_haplotype_to_nodes_bnp(args):
-        from .haplotype_nodes import make_ragged_haplotype_to_nodes
         phased_genotype_matrix = from_file(args.phased_genotype_matrix).matrix
         variant_to_nodes = VariantToNodes.from_file(args.variant_to_nodes)
 
-        if args.make_disc_backed:
-            from .haplotype_nodes import DiscBackedHaplotypeToNodes
-            logging.info("Making disc backed")
-            result = DiscBackedHaplotypeToNodes.from_phased_genotype_matrix(phased_genotype_matrix, variant_to_nodes, args.out_file_name)
-            result.to_file(args.out_file_name)
-        else:
-            result = make_ragged_haplotype_to_nodes(variant_to_nodes, phased_genotype_matrix, args.n_threads)
-            to_file(result, args.out_file_name)
+        from .haplotype_nodes import DiscBackedHaplotypeToNodes
+        logging.info("Making disc backed")
+        result = DiscBackedHaplotypeToNodes.from_phased_genotype_matrix(phased_genotype_matrix, variant_to_nodes, args.out_file_name)
+        result.to_file(args.out_file_name)
 
     subparser = subparsers.add_parser("make_haplotype_to_nodes_bnp")
     subparser.add_argument("-g", "--variant-to-nodes", required=True)
@@ -89,7 +78,6 @@ def run_argument_parser(args):
     subparser.add_argument("-o", "--out_file_name", required=True)
     subparser.add_argument("-t", "--n-threads", type=int, default=8, required=False)
     subparser.add_argument("-n", "--n-haplotypes", type=int, required=False)
-    subparser.add_argument("-d", "--make-disc-backed", type=bool, required=False, default=False, help="Uses less memory")
     subparser.set_defaults(func=make_haplotype_to_nodes_bnp)
 
 
