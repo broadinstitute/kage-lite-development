@@ -49,7 +49,7 @@ def create_helper_model_single_thread(data):
 
 
 def create_helper_model(args):
-    args.shared_memory_unique_id = str(random.randint(0, 1e15))
+    args.shared_memory_unique_id = str(np.random.randint(0, 1e15))
     pool = Pool(args.n_threads)
     logging.info("Made pool")
     model = None

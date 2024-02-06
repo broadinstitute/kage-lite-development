@@ -19,6 +19,7 @@ output_dir = '/tmp'
 
 # tests replicate individual tasks or portions of the WDL workflow using the same test data
 
+np.random.seed(1)
 atol = 1E-10
 
 def assert_equals_pkl(result_pkl, expected_pkl, attrs=[]):
