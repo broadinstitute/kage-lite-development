@@ -204,7 +204,9 @@ def test_MergeChromosomeHaplotypeToNodes():
     for n in range(output_haplotype_to_nodes.n_haplotypes()):
         assert np.all(output_haplotype_to_nodes.get_nodes(n) == expected_haplotype_to_nodes.get_nodes(n))
 
-@pytest.mark.parametrize("num_threads", [2]) # single thread has a bug
+# TODO num_threads > 1 passes locally, but appears to lead to nondeterminism on GitHub Actions runners?
+# note that we removed a single-thread implementation that used kage.models.helper_model.make_helper_model_from_genotype_matrix_and_node_counts
+@pytest.mark.parametrize("num_threads", [1])
 def test_MakeHelperModel(num_threads):
     chr1_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/inputs/test.chr1.genotype_matrix.pkl'
     chr2_genotype_matrix = f'{test_resources_dir}/MakeHelperModel/inputs/test.chr2.genotype_matrix.pkl'
