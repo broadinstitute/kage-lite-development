@@ -15,7 +15,7 @@ RUN apt-get update && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
 
-RUN pip install numpy==1.23.5 scipy==1.10.0 pandas==2.1.1 truvari==4.1.0 scikit-learn==1.3.1 matplotlib==3.8.0 pytest==8.0.0
+RUN pip install numpy==1.23.5 scipy==1.10.0 dill==0.3.6 pandas==2.1.1 truvari==4.1.0 scikit-learn==1.3.1 matplotlib==3.8.0 pytest==8.0.0
 RUN pip install -e shared_memory_wrapper/ -e obgraph/ -e graph_kmer_index/ -e kmer_mapper/ -e kage/ -e lite_utils/
 
 CMD ["bash"]
