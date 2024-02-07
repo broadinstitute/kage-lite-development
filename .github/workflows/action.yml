@@ -16,6 +16,10 @@ jobs:
     - uses: actions/checkout@v4
       with:
         lfs: true
+    - name: Check architecture
+      run: uname -m
+    - name: Check CPU
+      run: lscpu
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag kage-lite-development/kage-lite
     - name: Show Conda environment
@@ -23,4 +27,4 @@ jobs:
     - name: Check out LFS objects
       run: git lfs pull
     - name: Run integration pytests
-      run: docker run --shm-size 4G -v ${{ github.workspace }}/kage/tests/resources:/kage-lite/kage/tests/resources -t kage-lite-development/kage-lite pytest /kage-lite/kage/tests/test_pipeline.py
+      run: docker run --shm-size 4G -v ${{ github.workspace }}/kage/tests/resources:/kage-lite/kage/tests/resources -t kage-lite-development/kage-lite pytest -rP --log-cli-level debug /kage-lite/kage/tests/test_pipeline.py
