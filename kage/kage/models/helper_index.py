@@ -16,29 +16,19 @@ def create_helper_model_single_thread(data):
     interval, args = data
     from_variant, to_variant = interval
 
-    variant_to_nodes = from_shared_memory(
-        VariantToNodes, "variant_to_nodes" + args.shared_memory_unique_id
-    )
     genotype_matrix = from_shared_memory(
         GenotypeMatrix, "genotype_matrix" + args.shared_memory_unique_id
     )
 
     # read genotype matrix etc. from shared memory
-    # submatrix = GenotypeMatrix(genotype_matrix.matrix[from_variant:to_variant,:])
-    submatrix = GenotypeMatrix(
-        genotype_matrix.matrix[
-        from_variant:to_variant:,
-        ]
-    )
+    submatrix = GenotypeMatrix(genotype_matrix.matrix[from_variant:to_variant, :])
     logging.info(
         "Creating helper model for %d individuals and %d variants"
         % (submatrix.matrix.shape[1], submatrix.matrix.shape[0])
     )
-    sub_variant_to_nodes = variant_to_nodes.slice(from_variant, to_variant)
-    use_duplicate_counts = args.use_duplicate_counts
 
     subhelpers, subcombo = make_helper_model_from_genotype_matrix(
-        submatrix.matrix, None, dummy_count=1.0, window_size=args.window_size
+        submatrix.matrix, None, window_size=args.window_size
     )
 
     # variant ids in results are now from 0 to (to_variant-from_variant)
@@ -54,7 +44,7 @@ def create_helper_model(args):
     variant_to_nodes = VariantToNodes.from_file(args.variant_to_nodes)
     genotype_matrix = GenotypeMatrix.from_file(args.genotype_matrix)
     # NB: Transpose
-    genotype_matrix.matrix = genotype_matrix.matrix.transpose()
+    genotype_matrix.matrix = genotype_matrix.matrix.transpose().astype(np.int64)
 
     n_variants = len(variant_to_nodes.ref_nodes)
     n_threads = args.n_threads
@@ -65,8 +55,8 @@ def create_helper_model(args):
     variant_intervals = interval_chunks(0, n_variants, n_threads)
     logging.info("Will process variant intervals: %s" % variant_intervals)
 
-    helpers = np.zeros(n_variants, dtype=np.uint32)
-    genotype_matrix_combo = np.zeros((n_variants, 3, 3), dtype=float)
+    helpers = np.zeros(n_variants, dtype=np.int64)
+    genotype_matrix_combo = np.zeros((n_variants, 3, 3), dtype=np.float64)
 
     logging.info("Putting data in shared memory")
     # put data in shared memory
@@ -82,11 +72,11 @@ def create_helper_model(args):
     for from_variant, to_variant, subhelpers, subcombo in pool.imap(
             create_helper_model_single_thread, zip(variant_intervals, itertools.repeat(args))
     ):
-        logging.info("Done with one chunk")
+        logging.info(f"Done with one chunk: {from_variant}, {to_variant}")
         helpers[from_variant:to_variant] = subhelpers
         genotype_matrix_combo[from_variant:to_variant] = subcombo
 
-    genotype_matrix_combo = genotype_matrix_combo.astype(np.float32)
+    genotype_matrix_combo = genotype_matrix_combo.astype(np.float64)
 
     to_file(HelperVariants(helpers), args.out_file_name + ".pkl")
     logging.info("Saved helper model to file: %s" % args.out_file_name + ".pkl")

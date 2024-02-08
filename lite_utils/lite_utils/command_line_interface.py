@@ -61,7 +61,7 @@ def run_argument_parser(args):
         from obgraph.genotype_matrix import GenotypeMatrix
 
         genotype_matrices = [from_file(file).matrix for file in args.genotype_matrices]
-        matrix = GenotypeMatrix(np.concatenate(genotype_matrices).transpose())
+        matrix = GenotypeMatrix(np.concatenate(genotype_matrices).transpose().astype(np.int64))
 
         # phased (hom ref = 0, het = 1 or 2, hom alt = 3) to unphased (hom ref = 0, het = 1, hom alt = 2)
         matrix.matrix[matrix.matrix == 2] = 1

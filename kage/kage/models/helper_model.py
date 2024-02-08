@@ -4,10 +4,6 @@ import numpy as np
 
 from kage.models.joint_distribution import create_combined_matrices
 from shared_memory_wrapper import from_file
-from .helper_index_using_duplicate_counts import (
-    get_weighted_calc_func,
-    get_prob_weights,
-)
 
 MAIN = -1
 HELPER = -2
@@ -41,30 +37,15 @@ class CombinationMatrix:
 
 
 def calc_likelihood(count_matrix):
-    dummy_count = 1
+    dummy_count = 1.
     count_matrix = count_matrix + dummy_count
-    p = count_matrix / count_matrix.sum(axis=M, keepdims=True)
+    count_matrix = count_matrix.astype(np.float64)
 
-    # boost_matrix = np.ones((3, 3))
-    # boost_matrix[1, 1] = 2
-    # boost_matrix[2, 2] = 2
-
-    # boost_matrix[:,1] = np.array([1, 3, 3])
-    # boost_matrix[1:3, 1:3] = np.ones((2, 2)) * 2
     return (
         np.log(count_matrix[:, 0, 0])
         + np.log(count_matrix[:, 1, 1])
         + np.log(count_matrix[:, 2, 2])
     )
-    return np.sum(
-        np.log(np.max(count_matrix, axis=2) + 0.00001 - np.mean(count_matrix, axis=2)),
-        axis=1,
-    )
-    # return np.sum(np.log(np.max(count_matrix, axis=2) - np.min(count_matrix, axis=2)), axis=1)
-    # return np.sum(np.log(np.max(count_matrix, axis=2)), axis=1)
-    # return np.sum(np.log(np.sum(count_matrix, axis=M)), axis=1)
-    return np.sum(boost_matrix * count_matrix * np.log(p), axis=(M, H))
-    # return np.sum(count_matrix*np.log(p), axis=(M, H))
 
 
 def calc_argmax(count_matrix):
@@ -72,20 +53,18 @@ def calc_argmax(count_matrix):
 
 
 def get_helper_posterior(genotype_combo_matrix, global_helper_weight=5):
-    # logging.info("Dtype genotype combo matrix: %s" % genotype_combo_matrix.dtype)
-    helper_sum = np.sum(genotype_combo_matrix, axis=M, keepdims=True)
+    helper_sum = np.sum(genotype_combo_matrix, axis=M, keepdims=True).astype(np.int64)
     assert helper_sum[0].shape == (3, 1)
     global_helper_prior = (
         np.mean(helper_sum, axis=0, keepdims=True) + 1 / genotype_combo_matrix.shape[0]
-    )  # + 0.1*np.array([182, 20, 13])[:, None]/215  # numbers based on real data
-    # print("Global helper prior: \n%s" % global_helper_prior)
-    # print("Helper sum: \n%s" % helper_sum)
+    )
+    logging.debug("Global helper prior: \n%s" % global_helper_prior)
+    logging.debug("Helper sum: \n%s" % helper_sum)
     assert global_helper_prior.shape == (1, 3, 1)
     helper_posterior = (
         global_helper_prior / global_helper_prior.sum() * global_helper_weight
         + helper_sum
     )
-    # helper_posterior = global_helper_prior   # global_helper_prior * global_helper_weight + helper_sum
     helper_posterior = helper_posterior / helper_posterior.sum(axis=H, keepdims=True)
     assert np.allclose(helper_posterior.sum(axis=H), 1), helper_posterior
     return helper_posterior
@@ -99,22 +78,20 @@ def get_population_priors(
     weight_global=1,
 ):
     """n_variants x helper x main"""
-    prior = np.eye(3) * weight_diagonal
+    prior = np.eye(3, dtype=np.int64) * weight_diagonal
     prior[:, 0] = weight_left_column  # going to 0/0 is high
     prior += weight_global
-    #print("Weights added to population priors: \n%s" % prior)
+    logging.debug("Weights added to population priors: \n%s" % prior)
     mean = np.sum(genotype_combo_matrix, axis=0) + prior
-    #print("Population prior before weighted: \n%s" % mean)
-    weighted = mean / mean.sum(axis=M, keepdims=True) * weight  # helper_sum*weight
-    #print("")
-    #print("Population prior after weighted: \n%s" % weighted)
+    logging.debug("Population prior before weighted: \n%s" % mean)
+    weighted = mean.astype(np.float64) / np.sum(mean, axis=M, keepdims=True) * weight  # helper_sum*weight
+    logging.debug("Population prior after weighted: \n%s" % weighted)
     return weighted
 
 
 def make_helper_model_from_genotype_matrix(
     genotype_matrix,
     most_similar_variant_lookup=False,
-    dummy_count=1,
     score_func=calc_likelihood,
     window_size=1000,
 ):
@@ -137,28 +114,33 @@ def make_helper_model_from_genotype_matrix(
         )
 
     helper_counts = genotype_matrix[helpers] * 3
-    flat_idx = genotype_matrix + helper_counts
+    flat_idx = (genotype_matrix + helper_counts).astype(np.int64)
 
     genotype_combo_matrix = np.array(
-        [(flat_idx == k).sum(axis=1) for k in range(9)]
-    ).T.reshape(-1, 3, 3)
-    # print("########")
+        [np.sum(flat_idx == k, axis=1) for k in np.arange(9, dtype=np.int64)]
+    ).T.reshape(-1, 3, 3).astype(np.int64)
+
+    logging.debug("########")
+    logging.debug("Genotype combo matrix raw:")
+    logging.debug(genotype_combo_matrix)
+    logging.debug("Genotype combo matrix dtype:")
+    logging.debug(genotype_combo_matrix.dtype)
+
     population_prior = get_population_priors(genotype_combo_matrix)
     helper_posterior = get_helper_posterior(genotype_combo_matrix)
-    # print("Genotype combo matrix raw:")
-    # print(genotype_combo_matrix[0])
-    # print("Population prior: \n%s" % population_prior)
-    # print("Helper posterior:\n%s", helper_posterior[0])
-    #print("Combo matrix before population priors:\n%s" % genotype_combo_matrix)
+
+    logging.debug("Population prior: \n%s" % population_prior)
+    logging.debug("Helper posterior:\n%s", helper_posterior)
+    logging.debug("Combo matrix before population priors:\n%s" % genotype_combo_matrix)
     population_posterior = genotype_combo_matrix + population_prior
-    #print("Combo matrix after population priors:\n%s" % population_posterior)
+    logging.debug("Combo matrix after population priors:\n%s" % population_posterior)
     population_posterior = (
         population_posterior
         / population_posterior.sum(axis=M, keepdims=True)
         * helper_posterior
     )
-    # print("Genotype combo matrix posterior: ")
-    # print(population_posterior[0])
+    logging.debug("Genotype combo matrix posterior: ")
+    logging.debug(population_posterior)
 
     assert len(helpers) == genotype_matrix.shape[0]
 
@@ -166,13 +148,17 @@ def make_helper_model_from_genotype_matrix(
 
 
 def find_best_helper(combined, score_func, N, with_model=False):
-    best_idx, best_score = np.zeros(N, dtype="int"), -np.inf * np.ones(N)
+    best_idx, best_score = np.zeros(N, dtype=np.int64), -np.inf * np.ones(N, dtype=np.float64)
     for j, counts in enumerate(combined, 1):
         if j < 4:
             continue
         if j % 50 == 0:
             logging.info("Window %d" % j)
         scores = score_func(counts, j) if with_model else score_func(counts)
+
+        # TODO result of this floating-point comparison depends on whether CPU has AVX512 instructions and
+        # leads to reproducibility issues on GitHub Actions runners; we disable AVX512 in the Docker environment
+        # by setting the environment variable NPY_DISABLE_CPU_FEATURES appropriately
         do_update = scores > best_score[j:]
         best_score[j:][do_update] = scores[do_update]
         best_idx[j:][do_update] = np.flatnonzero(do_update)

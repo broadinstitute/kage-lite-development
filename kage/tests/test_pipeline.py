@@ -232,8 +232,8 @@ def test_MakeHelperModel(num_threads):
         '-o', output_prefix])
 
     assert_equals_pkl(output_genotype_matrix, expected_genotype_matrix, attrs=['matrix'])
-    assert_equals_pkl(output_helper_model_combo_matrix, expected_helper_model_combo_matrix, attrs=['matrix'])
     assert_equals_pkl(output_helper_model, expected_helper_model, attrs=['helper_variants'])
+    assert_equals_pkl(output_helper_model_combo_matrix, expected_helper_model_combo_matrix, attrs=['matrix'])
 
 @pytest.mark.parametrize("num_threads", [1, 2])
 def test_SampleChromosomeKmersFromLinearReference(num_threads):
