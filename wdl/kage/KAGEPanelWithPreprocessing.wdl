@@ -323,34 +323,39 @@ task PreprocessPanelVCF {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
+        # use tee to pipe the output of the first bcftools command to the three subsequent command blocks
         bcftools view --no-version ~{input_vcf_gz} -r ~{sep="," chromosomes} -Ou | \
             bcftools norm --no-version -m+ -N -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.joined.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.joined.vcf.gz
-
-        # TODO check whether dropping AF=0 alleles here has any effect
-        bcftools view --no-version ~{output_prefix}.joined.vcf.gz --trim-alt-alleles -Ou | \
-            bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
-
-        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.vcf.gz -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.split.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.split.vcf.gz
-
-        # we need to drop multiallelics before trimming, otherwise there may be representation issues in the graph
-        bcftools view --no-version --min-alleles 2 --max-alleles 2  ~{output_prefix}.joined.vcf.gz -Ou | \
+            bcftools plugin fill-tags --no-version -Ou -- -t AF,AC,AN | tee \
+        >(
+            # TODO check whether dropping AF=0 alleles here has any effect
             bcftools view --no-version --trim-alt-alleles -Ou | \
-            bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.bi.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.bi.vcf.gz
-
-        bcftools view --no-version --min-alleles 3  ~{output_prefix}.joined.vcf.gz -Ou | \
-            bcftools norm --no-version -m- -N -Ou | \
-            bcftools view --no-version --trim-alt-alleles -Ou | \
-            bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.multi.split.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.multi.split.vcf.gz
+                bcftools view --no-version --min-alleles 2 -Ou | \
+                bcftools plugin fill-tags --no-version -Ou -- -t AF,AC,AN | tee \
+            >(
+                bcftools norm --no-version -m- -N -Ou | \
+                    bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.split.vcf.gz -- -t AF,AC,AN &&
+                bcftools index -t ~{output_prefix}.preprocessed.split.vcf.gz
+            ) | \
+            bcftools view --no-version -Oz -o ~{output_prefix}.preprocessed.vcf.gz &&
+            bcftools index -t ~{output_prefix}.preprocessed.vcf.gz
+        ) \
+        >(
+            # we need to drop multiallelics before trimming, otherwise there may be representation issues in the graph
+            bcftools view --no-version --min-alleles 2 --max-alleles 2  -Ou | \
+                bcftools view --no-version --trim-alt-alleles -Ou | \
+                bcftools view --no-version --min-alleles 2 -Ou | \
+                bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.bi.vcf.gz -- -t AF,AC,AN &&
+            bcftools index -t ~{output_prefix}.preprocessed.bi.vcf.gz
+        ) | \
+        (
+            bcftools view --no-version --min-alleles 3 -Ou | \
+                bcftools norm --no-version -m- -N -Ou | \
+                bcftools view --no-version --trim-alt-alleles -Ou | \
+                bcftools view --no-version --min-alleles 2 -Ou | \
+                bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.multi.split.vcf.gz -- -t AF,AC,AN &&
+            bcftools index -t ~{output_prefix}.preprocessed.multi.split.vcf.gz
+        )
     }
 
     runtime {
