@@ -12,5 +12,4 @@ cromwell-*.jar
 cromwell-executions
 womtool-*.jar
 cromwell-workflow-logs
-wdl/resources/*.conf
 */build/
