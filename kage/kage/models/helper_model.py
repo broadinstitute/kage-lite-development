@@ -39,7 +39,7 @@ class CombinationMatrix:
 def calc_likelihood(count_matrix):
     dummy_count = 1.
     count_matrix = count_matrix + dummy_count
-    count_matrix = count_matrix.astype(np.float64)
+    count_matrix = count_matrix.astype(np.float32)
 
     return (
         np.log(count_matrix[:, 0, 0])
@@ -53,7 +53,7 @@ def calc_argmax(count_matrix):
 
 
 def get_helper_posterior(genotype_combo_matrix, global_helper_weight=5):
-    helper_sum = np.sum(genotype_combo_matrix, axis=M, keepdims=True).astype(np.int64)
+    helper_sum = np.sum(genotype_combo_matrix, axis=M, keepdims=True).astype(np.uint32)
     assert helper_sum[0].shape == (3, 1)
     global_helper_prior = (
         np.mean(helper_sum, axis=0, keepdims=True) + 1 / genotype_combo_matrix.shape[0]
@@ -78,13 +78,13 @@ def get_population_priors(
     weight_global=1,
 ):
     """n_variants x helper x main"""
-    prior = np.eye(3, dtype=np.int64) * weight_diagonal
+    prior = np.eye(3, dtype=np.float32) * weight_diagonal
     prior[:, 0] = weight_left_column  # going to 0/0 is high
     prior += weight_global
     logging.debug("Weights added to population priors: \n%s" % prior)
     mean = np.sum(genotype_combo_matrix, axis=0) + prior
     logging.debug("Population prior before weighted: \n%s" % mean)
-    weighted = mean.astype(np.float64) / np.sum(mean, axis=M, keepdims=True) * weight  # helper_sum*weight
+    weighted = mean.astype(np.float32) / np.sum(mean, axis=M, keepdims=True) * weight  # helper_sum*weight
     logging.debug("Population prior after weighted: \n%s" % weighted)
     return weighted
 
@@ -114,11 +114,11 @@ def make_helper_model_from_genotype_matrix(
         )
 
     helper_counts = genotype_matrix[helpers] * 3
-    flat_idx = (genotype_matrix + helper_counts).astype(np.int64)
+    flat_idx = (genotype_matrix + helper_counts).astype(np.uint32)
 
     genotype_combo_matrix = np.array(
-        [np.sum(flat_idx == k, axis=1) for k in np.arange(9, dtype=np.int64)]
-    ).T.reshape(-1, 3, 3).astype(np.int64)
+        [np.sum(flat_idx == k, axis=1) for k in np.arange(9, dtype=np.uint8)]
+    ).T.reshape(-1, 3, 3).astype(np.uint8)
 
     logging.debug("########")
     logging.debug("Genotype combo matrix raw:")
@@ -148,7 +148,7 @@ def make_helper_model_from_genotype_matrix(
 
 
 def find_best_helper(combined, score_func, N, with_model=False):
-    best_idx, best_score = np.zeros(N, dtype=np.int64), -np.inf * np.ones(N, dtype=np.float64)
+    best_idx, best_score = np.zeros(N, dtype=np.uint32), -np.inf * np.ones(N, dtype=np.float32)
     for j, counts in enumerate(combined, 1):
         if j < 4:
             continue

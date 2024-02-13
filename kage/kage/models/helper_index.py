@@ -44,7 +44,7 @@ def create_helper_model(args):
     variant_to_nodes = VariantToNodes.from_file(args.variant_to_nodes)
     genotype_matrix = GenotypeMatrix.from_file(args.genotype_matrix)
     # NB: Transpose
-    genotype_matrix.matrix = genotype_matrix.matrix.transpose().astype(np.int64)
+    genotype_matrix.matrix = genotype_matrix.matrix.transpose().astype(np.uint8)
 
     n_variants = len(variant_to_nodes.ref_nodes)
     n_threads = args.n_threads
@@ -55,8 +55,8 @@ def create_helper_model(args):
     variant_intervals = interval_chunks(0, n_variants, n_threads)
     logging.info("Will process variant intervals: %s" % variant_intervals)
 
-    helpers = np.zeros(n_variants, dtype=np.int64)
-    genotype_matrix_combo = np.zeros((n_variants, 3, 3), dtype=np.float64)
+    helpers = np.zeros(n_variants, dtype=np.uint32)
+    genotype_matrix_combo = np.zeros((n_variants, 3, 3), dtype=np.float32)
 
     logging.info("Putting data in shared memory")
     # put data in shared memory
@@ -76,7 +76,7 @@ def create_helper_model(args):
         helpers[from_variant:to_variant] = subhelpers
         genotype_matrix_combo[from_variant:to_variant] = subcombo
 
-    genotype_matrix_combo = genotype_matrix_combo.astype(np.float64)
+    genotype_matrix_combo = genotype_matrix_combo.astype(np.float32)
 
     to_file(HelperVariants(helpers), args.out_file_name + ".pkl")
     logging.info("Saved helper model to file: %s" % args.out_file_name + ".pkl")
