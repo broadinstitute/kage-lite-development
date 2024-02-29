@@ -65,18 +65,21 @@ def _get_kmer_index_from_args(args):
 
 
 def get_kmer_hashes_from_chunk_sequence(chunk_sequence, kmer_size):
-    hashes = bnp.sequence.get_kmers(
-        bnp.as_encoded_array(chunk_sequence, bnp.DNAEncoding), kmer_size).ravel().raw().astype(np.uint64)
+    encoded_array = bnp.as_encoded_array(chunk_sequence)
+    mask = np.sum(encoded_array == "N", axis=-1) > 0
+    encoded_array = encoded_array[~mask]
+    encoded_array = bnp.change_encoding(encoded_array, bnp.DNAEncoding)
+    # encoded_array = bnp.as_encoded_array(chunk_sequence, bnp.DNAEncoding)
+    hashes = bnp.sequence.get_kmers(encoded_array, kmer_size).ravel().raw().astype(np.uint64)
     logging.debug("N hashes: %d" % len(hashes))
     return hashes
 
 
 def open_file(filename):
     path = PurePath(filename)
-    suffix = path.suffixes[-1]
 
-    if suffix == ".gz":
-        suffix = path.suffixes[-2]
+    is_gz = path.suffixes[-1] == ".gz"
+    suffix = path.suffixes[-2] if is_gz else path.suffixes[-1]
 
     try:
         buffer_type = bnp.io.files._get_buffer_type(suffix)
@@ -84,10 +87,12 @@ def open_file(filename):
         logging.error("Unsupported file suffix %s" % suffix)
         raise
 
-    if suffix == ".fa":
+    if suffix == ".fa" or suffix == ".fasta":
         # override buffer type for some performance gain
         buffer_type = bnp.TwoLineFastaBuffer
         logging.info("Using buffer type TwoLineFastaBuffer")
 
-    open_func = gzip.open if path.suffixes[-1] == ".gz" else open
-    return bnp.io.parser.NumpyFileReader(open_func(filename, "rb"), buffer_type)
+    open_func = gzip.open if is_gz or suffix == ".bam" else open
+    reader = bnp.io.parser.NumpyFileReader(open_func(filename, "rb"), buffer_type)
+    reader.set_prepend_mode()
+    return reader

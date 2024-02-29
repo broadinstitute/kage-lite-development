@@ -129,7 +129,8 @@ def map_bnp(args):
     np.save(args.output_file, node_counts)
     logging.info("Saved node counts to %s.npy" % args.output_file)
     logging.info("Spent %.3f sec in total mapping kmers using %d threads" % (time.perf_counter()-start_time, args.n_threads))
-    remove_shared_memory_in_session()
+    file.close()
+    logging.info("Closed %s" % file)
 
 
 def run_argument_parser(args):
@@ -168,5 +169,3 @@ def run_argument_parser(args):
 
     args = parser.parse_args(args)
     args.func(args)
-
-    remove_shared_memory_in_session()
