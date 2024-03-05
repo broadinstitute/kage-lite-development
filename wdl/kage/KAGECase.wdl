@@ -23,7 +23,7 @@ workflow KAGECase {
         File reference_fasta
         File reference_fasta_fai
         File reference_dict
-        Array[String] chromosomes
+        Array[String]+ chromosomes
         Boolean subset_reads = true
         String sample_name
         Float average_coverage
@@ -41,45 +41,27 @@ workflow KAGECase {
             monitoring_script = monitoring_script
     }
 
-    if (subset_reads) {
-        call PreprocessCaseReads {
-            # TODO we require the alignments to subset by chromosome; change to start from raw reads
-            input:
-                input_cram = input_cram,
-                input_cram_idx = IndexCaseReads.cram_idx,
-                reference_fasta = reference_fasta,
-                reference_fasta_fai = reference_fasta_fai,
-                reference_dict = reference_dict,
-                output_prefix = sample_name,
-                chromosomes = chromosomes,
-                docker = docker,
-                monitoring_script = monitoring_script
-        }
-    }
-
-    if (!subset_reads) {
-        call PreprocessCaseReadsWithoutSubsetting {
-            # TODO we require the alignments to subset by chromosome; change to start from raw reads
-            input:
-                input_cram = input_cram,
-                input_cram_idx = IndexCaseReads.cram_idx,
-                reference_fasta = reference_fasta,
-                reference_fasta_fai = reference_fasta_fai,
-                reference_dict = reference_dict,
-                output_prefix = sample_name,
-                docker = kage_docker,
-                monitoring_script = monitoring_script
-        }
-    }
-
-    call KAGECase {
+    call KAGECountKmers {
         input:
-            input_fasta = select_first([PreprocessCaseReads.preprocessed_fasta, PreprocessCaseReadsWithoutSubsetting.preprocessed_fasta]),
-            panel_index = panel_index,
+            input_cram = input_cram,
+            input_cram_idx = IndexCaseReads.cram_idx,
             panel_kmer_index_only_variants_with_revcomp = panel_kmer_index_only_variants_with_revcomp,
+            reference_fasta = reference_fasta,
+            reference_fasta_fai = reference_fasta_fai,
+            reference_dict = reference_dict,
+            chromosomes = chromosomes,
+            subset_reads = subset_reads,
+            output_prefix = sample_name,
+            docker = kage_docker,
+            monitoring_script = monitoring_script
+    }
+
+    call KAGEGenotype {
+        input:
+            kmer_counts = KAGECountKmers.kmer_counts,
+            panel_index = panel_index,
             panel_multi_split_vcf_gz = panel_multi_split_vcf_gz,
             panel_multi_split_vcf_gz_tbi = panel_multi_split_vcf_gz_tbi,
-            reference_fasta_fai = reference_fasta_fai,
             output_prefix = sample_name,
             sample_name = sample_name,
             average_coverage = average_coverage,
@@ -90,8 +72,8 @@ workflow KAGECase {
     scatter (j in range(length(chromosomes))) {
         call GLIMPSECaseChromosome {
             input:
-                kage_vcf_gz = KAGECase.kage_vcf_gz,
-                kage_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi,
+                kage_vcf_gz = KAGEGenotype.kage_vcf_gz,
+                kage_vcf_gz_tbi = KAGEGenotype.kage_vcf_gz_tbi,
                 panel_split_vcf_gz = panel_split_vcf_gz,
                 panel_split_vcf_gz_tbi = panel_split_vcf_gz_tbi,
                 reference_fasta_fai = reference_fasta_fai,
@@ -112,9 +94,9 @@ workflow KAGECase {
     }
 
     output {
-        File kmer_counts = KAGECase.kmer_counts
-        File kage_vcf_gz = KAGECase.kage_vcf_gz
-        File kage_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi
+        File kmer_counts = KAGECountKmers.kmer_counts
+        File kage_vcf_gz = KAGEGenotype.kage_vcf_gz
+        File kage_vcf_gz_tbi = KAGEGenotype.kage_vcf_gz_tbi
         File glimpse_vcf_gz = GLIMPSECaseGather.glimpse_vcf_gz
         File glimpse_vcf_gz_tbi = GLIMPSECaseGather.glimpse_vcf_gz_tbi
     }
@@ -136,7 +118,7 @@ task IndexCaseReads {
     String output_prefix = basename(input_cram, ".cram")
 
     command {
-        set -e
+        set -eou pipefail
 
         # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
         touch monitoring.log
@@ -163,114 +145,86 @@ task IndexCaseReads {
     }
 }
 
-task PreprocessCaseReads {
+task KAGECountKmers {
     input {
         File input_cram
         File input_cram_idx
-        File reference_fasta
-        File reference_fasta_fai
-        File reference_dict
-        Array[String] chromosomes
-        String output_prefix
-
-        String docker
-        File? monitoring_script
-
-        RuntimeAttributes runtime_attributes = {}
-    }
-
-    String filter_N_regex = "/^>/{N;/^>.*\\n.*N.*/d}"
-
-    command {
-        set -e
-
-        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
-        touch monitoring.log
-        if [ -s ~{monitoring_script} ]; then
-            bash ~{monitoring_script} > monitoring.log &
-        fi
-
-        # hacky way to get chromosomes into bed file
-        grep -P '~{sep="\\t|" chromosomes}\t' ~{reference_fasta_fai} | cut -f 1,2 | sed -e 's/\t/\t1\t/g' > chromosomes.bed
-
-        # filter out read pairs containing N nucleotides
-        # TODO move functionality into KAGE code
-        samtools view --reference ~{reference_fasta} -@ $(nproc) -L chromosomes.bed -u ~{input_cram} | \
-            samtools fasta --reference ~{reference_fasta} -@ $(nproc) | \
-            sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
-    }
-
-    runtime {
-        docker: docker
-        cpu: select_first([runtime_attributes.cpu, 2])
-        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 500]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
-        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
-        preemptible: select_first([runtime_attributes.preemptible, 2])
-        maxRetries: select_first([runtime_attributes.max_retries, 1])
-    }
-
-    output {
-        File monitoring_log = "monitoring.log"
-        File preprocessed_fasta = "~{output_prefix}.preprocessed.fasta"
-    }
-}
-
-task PreprocessCaseReadsWithoutSubsetting {
-    input {
-        File input_cram
-        File input_cram_idx
-        File reference_fasta
-        File reference_fasta_fai
-        File reference_dict
-        String output_prefix
-
-        String docker
-        File? monitoring_script
-
-        RuntimeAttributes runtime_attributes = {}
-    }
-
-    String filter_N_regex = "/^>/{N;/^>.*\\n.*N.*/d}"
-
-    command {
-        set -e
-
-        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
-        touch monitoring.log
-        if [ -s ~{monitoring_script} ]; then
-            bash ~{monitoring_script} > monitoring.log &
-        fi
-
-        # filter out read pairs containing N nucleotides
-        # TODO move functionality into KAGE code
-        samtools fasta --reference ~{reference_fasta} -@ $(nproc) ~{input_cram} | sed -E '~{filter_N_regex}' > ~{output_prefix}.preprocessed.fasta
-    }
-
-    runtime {
-        docker: docker
-        cpu: select_first([runtime_attributes.cpu, 2])
-        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 500]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
-        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
-        preemptible: select_first([runtime_attributes.preemptible, 2])
-        maxRetries: select_first([runtime_attributes.max_retries, 1])
-    }
-
-    output {
-        File monitoring_log = "monitoring.log"
-        File preprocessed_fasta = "~{output_prefix}.preprocessed.fasta"
-    }
-}
-
-task KAGECase {
-    input {
-        File input_fasta
-        File panel_index
         File panel_kmer_index_only_variants_with_revcomp
+        File reference_fasta
+        File reference_fasta_fai
+        File reference_dict
+        Array[String]+ chromosomes
+        Boolean subset_reads
+        String output_prefix
+
+        String docker
+        File? monitoring_script
+
+        String kmer_mapper_args = "-c 10000000"
+
+        RuntimeAttributes runtime_attributes = {}
+        Int? cpu = 8
+    }
+
+    # explicitly specify CPU and memory separately for KAGE commands;
+    # using nproc w/ automatic CPU/memory scaling of custom instances on Terra can be suboptimal or cause OOM
+    Int cpu_resolved = select_first([runtime_attributes.cpu, cpu])
+
+    command <<<
+        set -eou pipefail
+
+        # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+        touch monitoring.log
+        if [ -s ~{monitoring_script} ]; then
+            bash ~{monitoring_script} > monitoring.log &
+        fi
+
+        date
+        mkfifo ~{output_prefix}.preprocessed.fa
+        if ~{subset_reads}; then
+            # hacky way to get chromosomes into bed file
+            grep -P '~{sep="\\t|" chromosomes}\t' ~{reference_fasta_fai} | cut -f 1,2 | sed -e 's/\t/\t1\t/g' > chromosomes.bed
+
+            echo "Subsetting reads..."
+            samtools view --reference ~{reference_fasta} -@ $(nproc) ~{if subset_reads then "--regions-file chromosomes.bed" else ""} -u -X ~{input_cram} ~{input_cram_idx} | \
+                samtools fasta --reference ~{reference_fasta} -@ $(nproc) > ~{output_prefix}.preprocessed.fa &
+        else
+            echo "Not subsetting reads..."
+            samtools fasta --reference ~{reference_fasta} -@ $(nproc) -X ~{input_cram} ~{input_cram_idx} > ~{output_prefix}.preprocessed.fa &
+        fi
+
+        kmer_mapper map \
+            ~{kmer_mapper_args} \
+            -t ~{cpu_resolved} \
+            -i ~{panel_kmer_index_only_variants_with_revcomp} \
+            -f ~{output_prefix}.preprocessed.fa \
+            -o ~{output_prefix}.kmer_counts.npy
+
+        rm ~{output_prefix}.preprocessed.fa
+    >>>
+
+    runtime {
+        docker: docker
+        cpu: cpu_resolved
+        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
+        preemptible: select_first([runtime_attributes.preemptible, 2])
+        maxRetries: select_first([runtime_attributes.max_retries, 1])
+    }
+
+    output {
+        File monitoring_log = "monitoring.log"
+        File kmer_counts = "~{output_prefix}.kmer_counts.npy"
+    }
+}
+
+task KAGEGenotype {
+    input {
+        File kmer_counts
+        File panel_index
         File panel_multi_split_vcf_gz # for filling in biallelic-only VCFs produced by KAGE
         File panel_multi_split_vcf_gz_tbi
-        File reference_fasta_fai
         String output_prefix
         String sample_name
         Float average_coverage
@@ -278,19 +232,19 @@ task KAGECase {
         String docker
         File? monitoring_script
 
-        String kmer_mapper_args = "-c 100000000"
         Boolean? ignore_helper_model = false
         String? kage_genotype_extra_args
-
 
         RuntimeAttributes runtime_attributes = {}
         Int? cpu = 8
     }
 
+    # explicitly specify CPU and memory separately for KAGE commands;
+    # using nproc w/ automatic CPU/memory scaling of custom instances on Terra can be suboptimal or cause OOM
     Int cpu_resolved = select_first([runtime_attributes.cpu, cpu])
 
     command {
-        set -e
+        set -eou pipefail
 
         # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
         touch monitoring.log
@@ -298,16 +252,9 @@ task KAGECase {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        kmer_mapper map \
-            ~{kmer_mapper_args} \
-            -t ~{cpu_resolved} \
-            -i ~{panel_kmer_index_only_variants_with_revcomp} \
-            -f ~{input_fasta} \
-            -o ~{output_prefix}.kmer_counts.npy
-
         kage genotype \
             -i ~{panel_index} \
-            -c ~{output_prefix}.kmer_counts.npy \
+            -c ~{kmer_counts} \
             --average-coverage ~{average_coverage} \
             -s ~{sample_name} \
             ~{true='-I' false='' ignore_helper_model} \
@@ -337,7 +284,7 @@ task KAGECase {
         docker: docker
         cpu: cpu_resolved
         memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
-        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 10]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
         bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
         preemptible: select_first([runtime_attributes.preemptible, 2])
         maxRetries: select_first([runtime_attributes.max_retries, 1])
@@ -345,7 +292,6 @@ task KAGECase {
 
     output {
         File monitoring_log = "monitoring.log"
-        File kmer_counts = "~{output_prefix}.kmer_counts.npy"
         File kage_vcf_gz = "~{output_prefix}.kage.vcf.gz"
         File kage_vcf_gz_tbi = "~{output_prefix}.kage.vcf.gz.tbi"
     }
@@ -368,7 +314,7 @@ task GLIMPSECaseChromosome {
     }
 
     command {
-        set -e
+        set -eou pipefail
 
         # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
         touch monitoring.log
@@ -426,7 +372,7 @@ task GLIMPSECaseGather {
     }
 
     command {
-        set -e
+        set -eou pipefail
 
         # Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
         touch monitoring.log

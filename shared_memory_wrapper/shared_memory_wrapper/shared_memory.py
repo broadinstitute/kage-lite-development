@@ -390,9 +390,10 @@ def remove_shared_memory(name, limit_to_session=False):
         if m.startswith(name + "__") or m.startswith(name + "-") or m == name:
             try:
                 sa.delete(m)
+                logging.debug("Deleted %s" % m)
                 n_deleted += 1
             except FileNotFoundError:
-                logging.debug("Did not delete %s" % m)
+                logging.debug("Did not find %s for deletion" % m)
                 continue
             if m in SHARED_MEMORIES_IN_SESSION:
                 SHARED_MEMORIES_IN_SESSION.remove(m)
@@ -406,6 +407,7 @@ def remove_shared_memory(name, limit_to_session=False):
         file = name + ".npz"
         if os.path.exists(file):
             os.remove(file)
+            logging.debug("Deleted %s" % file)
 
         if name in TMP_FILES_IN_SESSION:
             TMP_FILES_IN_SESSION.remove(name)
@@ -413,7 +415,7 @@ def remove_shared_memory(name, limit_to_session=False):
         n_deleted += 1
 
     if n_deleted == 0:
-        logging.debug("Did not find anything to delete fro %s" % name)
+        logging.debug("Did not find anything to delete for %s" % name)
 
 
 def remove_shared_memory_in_session():
