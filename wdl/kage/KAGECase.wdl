@@ -188,9 +188,11 @@ task KAGECountKmers {
             echo "Subsetting reads..."
             samtools view --reference ~{reference_fasta} -@ $(nproc) ~{if subset_reads then "--regions-file chromosomes.bed" else ""} -u -X ~{input_cram} ~{input_cram_idx} | \
                 samtools fasta --reference ~{reference_fasta} -@ $(nproc) > ~{output_prefix}.preprocessed.fa &
+            pid_samtools=$!
         else
             echo "Not subsetting reads..."
             samtools fasta --reference ~{reference_fasta} -@ $(nproc) -X ~{input_cram} ~{input_cram_idx} > ~{output_prefix}.preprocessed.fa &
+            pid_samtools=$!
         fi
 
         kmer_mapper map \
@@ -201,6 +203,9 @@ task KAGECountKmers {
             -o ~{output_prefix}.kmer_counts.npy
 
         rm ~{output_prefix}.preprocessed.fa
+
+        # capture exit code from named pipe
+        wait $pid_samtools
     >>>
 
     runtime {
