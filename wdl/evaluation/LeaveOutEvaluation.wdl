@@ -14,7 +14,7 @@ struct RuntimeAttributes {
     Int? max_retries
 }
 
-workflow LeaveOneOutEvaluation {
+workflow LeaveOutEvaluation {
     input {
         File input_vcf_gz
         File input_vcf_gz_tbi
@@ -29,11 +29,11 @@ workflow LeaveOneOutEvaluation {
         File challenging_medically_relevant_genes_bed
         String output_prefix
         Array[String] chromosomes
-        Array[String] leave_one_out_sample_names
+        Array[Array[String]] leave_out_sample_names_array
         Boolean do_pangenie
 
         # TODO we require the alignments to subset by chromosome; change to start from raw reads
-        Array[File] leave_one_out_crams
+        Map[String, File] leave_out_crams
 
         String docker
         String kage_docker
@@ -61,38 +61,16 @@ workflow LeaveOneOutEvaluation {
             runtime_attributes = runtime_attributes
     }
 
-    scatter (i in range(length(leave_one_out_sample_names))) {
-        String leave_one_out_sample_name = leave_one_out_sample_names[i]
-        String leave_one_out_cram = leave_one_out_crams[i]
-        String leave_one_out_output_prefix = output_prefix + ".LOO-" + leave_one_out_sample_name
-
-        call IndexCaseReads {
-            # TODO we require the alignments to subset by chromosome; change to start from raw reads
-            input:
-                input_cram = leave_one_out_cram,
-                docker = docker,
-                monitoring_script = monitoring_script
-        }
-
-        call PreprocessCaseReads {
-            # TODO we require the alignments to subset by chromosome; change to start from raw reads
-            input:
-                input_cram = leave_one_out_cram,
-                input_cram_idx = IndexCaseReads.cram_idx,
-                reference_fasta = case_reference_fasta,
-                reference_fasta_fai = case_reference_fasta_fai,
-                output_prefix = leave_one_out_sample_name,
-                chromosomes = chromosomes,
-                docker = docker,
-                monitoring_script = monitoring_script
-        }
+    scatter (i in range(length(leave_out_sample_names_array))) {
+        Array[String] leave_out_sample_names = leave_out_sample_names_array[i]
+        String leave_out_output_prefix = output_prefix + ".LO-" + i
 
         call CreateLeaveOneOutPanelVCF {
             input:
                 input_vcf_gz = PreprocessPanelVCF.preprocessed_panel_vcf_gz,
                 input_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_vcf_gz_tbi,
-                output_prefix = leave_one_out_output_prefix,
-                leave_one_out_sample_name = leave_one_out_sample_name,
+                output_prefix = leave_out_output_prefix,
+                leave_out_sample_names = leave_out_sample_names,
                 docker = docker,
                 monitoring_script = monitoring_script,
                 runtime_attributes = runtime_attributes
@@ -100,112 +78,138 @@ workflow LeaveOneOutEvaluation {
 
         call KAGEPanelWithPreprocessing.KAGEPanelWithPreprocessing as KAGELeaveOneOutPanel {
             input:
-                input_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_bi_vcf_gz,
-                input_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_bi_vcf_gz_tbi,
+                input_vcf_gz = CreateLeaveOneOutPanelVCF.leave_out_panel_bi_vcf_gz,
+                input_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_out_panel_bi_vcf_gz_tbi,
                 do_preprocessing = false,
                 reference_fasta = reference_fasta,
                 reference_fasta_fai = reference_fasta_fai,
-                output_prefix = leave_one_out_output_prefix,
+                output_prefix = leave_out_output_prefix,
                 chromosomes = chromosomes,
                 docker = kage_docker,
                 monitoring_script = monitoring_script
         }
 
-        # KAGE+GLIMPSE case
-        call KAGECase {
-            input:
-                input_fasta = PreprocessCaseReads.preprocessed_fasta,
-                panel_index = KAGELeaveOneOutPanel.index,
-                panel_kmer_index_only_variants_with_revcomp = KAGELeaveOneOutPanel.kmer_index_only_variants_with_revcomp,
-                panel_multi_split_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_multi_split_vcf_gz,
-                panel_multi_split_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_multi_split_vcf_gz_tbi,
-                reference_fasta_fai = reference_fasta_fai,
-                output_prefix = leave_one_out_sample_name,
-                sample_name = leave_one_out_sample_name,
-                docker = kage_docker,
-                monitoring_script = monitoring_script
-        }
+        scatter (j in range(length(leave_out_sample_names))) {
+            String leave_out_sample_name = leave_out_sample_names[j]
+            String leave_out_cram = leave_out_crams[leave_out_sample_name]
 
-        scatter (j in range(length(chromosomes))) {
-            call GLIMPSECaseChromosome {
+            call IndexCaseReads {
+                # TODO we require the alignments to subset by chromosome; change to start from raw reads
                 input:
-                    kage_vcf_gz = KAGECase.kage_vcf_gz,
-                    kage_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi,
-                    panel_split_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_split_vcf_gz,
-                    panel_split_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_split_vcf_gz_tbi,
+                    input_cram = leave_out_cram,
+                    docker = docker,
+                    monitoring_script = monitoring_script
+            }
+
+            call PreprocessCaseReads {
+                # TODO we require the alignments to subset by chromosome; change to start from raw reads
+                input:
+                    input_cram = leave_out_cram,
+                    input_cram_idx = IndexCaseReads.cram_idx,
+                    reference_fasta = case_reference_fasta,
+                    reference_fasta_fai = case_reference_fasta_fai,
+                    output_prefix = leave_out_sample_name,
+                    chromosomes = chromosomes,
+                    docker = docker,
+                    monitoring_script = monitoring_script
+            }
+
+            # KAGE+GLIMPSE case
+            call KAGECase {
+                input:
+                    input_fasta = PreprocessCaseReads.preprocessed_fasta,
+                    panel_index = KAGELeaveOneOutPanel.index,
+                    panel_kmer_index_only_variants_with_revcomp = KAGELeaveOneOutPanel.kmer_index_only_variants_with_revcomp,
+                    panel_multi_split_vcf_gz = CreateLeaveOneOutPanelVCF.leave_out_panel_multi_split_vcf_gz,
+                    panel_multi_split_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_out_panel_multi_split_vcf_gz_tbi,
                     reference_fasta_fai = reference_fasta_fai,
-                    chromosome = chromosomes[j],
-                    genetic_map = genetic_maps[j],
-                    output_prefix = leave_one_out_sample_name,
+                    output_prefix = leave_out_sample_name,
+                    sample_name = leave_out_sample_name,
                     docker = kage_docker,
                     monitoring_script = monitoring_script
             }
-        }
 
-        call GLIMPSECaseGather {
-            input:
-                chromosome_glimpse_vcf_gzs = GLIMPSECaseChromosome.chromosome_glimpse_vcf_gz,
-                chromosome_glimpse_vcf_gz_tbis = GLIMPSECaseChromosome.chromosome_glimpse_vcf_gz_tbi,
-                output_prefix = leave_one_out_sample_name,
-                docker = kage_docker,
-                monitoring_script = monitoring_script
-        }
+            scatter (k in range(length(chromosomes))) {
+                call GLIMPSECaseChromosome {
+                    input:
+                        kage_vcf_gz = KAGECase.kage_vcf_gz,
+                        kage_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi,
+                        panel_split_vcf_gz = CreateLeaveOneOutPanelVCF.leave_out_panel_split_vcf_gz,
+                        panel_split_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_out_panel_split_vcf_gz_tbi,
+                        reference_fasta_fai = reference_fasta_fai,
+                        chromosome = chromosomes[k],
+                        genetic_map = genetic_maps[k],
+                        output_prefix = leave_out_sample_name,
+                        docker = kage_docker,
+                        monitoring_script = monitoring_script
+                }
+            }
 
-        # KAGE evaluation
-        call CalculateMetrics as CalculateMetricsKAGE {
-            input:
-                case_vcf_gz = KAGECase.kage_vcf_gz,
-                case_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi,
-                truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
-                truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
-                chromosomes = chromosomes,
-                label = "KAGE",
-                sample_name = leave_one_out_sample_name,
-                docker = docker,
-                monitoring_script = monitoring_script
-        }
-
-        # KAGE+GLIMPSE evaluation
-        call CalculateMetrics as CalculateMetricsKAGEPlusGLIMPSE {
-            input:
-                case_vcf_gz = GLIMPSECaseGather.glimpse_vcf_gz,
-                case_vcf_gz_tbi = GLIMPSECaseGather.glimpse_vcf_gz_tbi,
-                truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
-                truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
-                chromosomes = chromosomes,
-                label = "KAGE+GLIMPSE",
-                sample_name = leave_one_out_sample_name,
-                docker = docker,
-                monitoring_script = monitoring_script
-        }
-
-        if (do_pangenie) {
-            # PanGenie case
-            call PanGenieCase.PanGenie as PanGenieCase {
+            call GLIMPSECaseGather {
                 input:
-                    panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz,
-                    panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_one_out_panel_vcf_gz_tbi,
-                    input_fasta = PreprocessCaseReads.preprocessed_fasta,
-                    reference_fasta = reference_fasta,
-                    chromosomes = chromosomes,
-                    sample_name = leave_one_out_sample_name,
-                    output_prefix = leave_one_out_sample_name,
-                    docker = pangenie_docker,
+                    chromosome_glimpse_vcf_gzs = GLIMPSECaseChromosome.chromosome_glimpse_vcf_gz,
+                    chromosome_glimpse_vcf_gz_tbis = GLIMPSECaseChromosome.chromosome_glimpse_vcf_gz_tbi,
+                    output_prefix = leave_out_sample_name,
+                    docker = kage_docker,
                     monitoring_script = monitoring_script
             }
 
-            # PanGenie evaluation
-            call CalculateMetrics as CalculateMetricsPanGenie {
+            # KAGE evaluation
+            call CalculateMetrics as CalculateMetricsKAGE {
                 input:
-                    case_vcf_gz = PanGenieCase.genotyping_vcf_gz,
-                    case_vcf_gz_tbi = PanGenieCase.genotyping_vcf_gz_tbi,
+                    case_vcf_gz = KAGECase.kage_vcf_gz,
+                    case_vcf_gz_tbi = KAGECase.kage_vcf_gz_tbi,
                     truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
                     truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
                     chromosomes = chromosomes,
-                    label = "PanGenie",
-                    sample_name = leave_one_out_sample_name,
+                    label = "KAGE",
+                    sample_name = leave_out_sample_name,
                     docker = docker,
                     monitoring_script = monitoring_script
+            }
+
+            # KAGE+GLIMPSE evaluation
+            call CalculateMetrics as CalculateMetricsKAGEPlusGLIMPSE {
+                input:
+                    case_vcf_gz = GLIMPSECaseGather.glimpse_vcf_gz,
+                    case_vcf_gz_tbi = GLIMPSECaseGather.glimpse_vcf_gz_tbi,
+                    truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
+                    truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
+                    chromosomes = chromosomes,
+                    label = "KAGE+GLIMPSE",
+                    sample_name = leave_out_sample_name,
+                    docker = docker,
+                    monitoring_script = monitoring_script
+            }
+
+            if (do_pangenie) {
+                # PanGenie case
+                call PanGenieCase.PanGenie as PanGenieCase {
+                    input:
+                        panel_vcf_gz = CreateLeaveOneOutPanelVCF.leave_out_panel_vcf_gz,
+                        panel_vcf_gz_tbi = CreateLeaveOneOutPanelVCF.leave_out_panel_vcf_gz_tbi,
+                        input_fasta = PreprocessCaseReads.preprocessed_fasta,
+                        reference_fasta = reference_fasta,
+                        chromosomes = chromosomes,
+                        sample_name = leave_out_sample_name,
+                        output_prefix = leave_out_sample_name,
+                        docker = pangenie_docker,
+                        monitoring_script = monitoring_script
+                }
+
+                # PanGenie evaluation
+                call CalculateMetrics as CalculateMetricsPanGenie {
+                    input:
+                        case_vcf_gz = PanGenieCase.genotyping_vcf_gz,
+                        case_vcf_gz_tbi = PanGenieCase.genotyping_vcf_gz_tbi,
+                        truth_vcf_gz = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz,
+                        truth_vcf_gz_tbi = PreprocessPanelVCF.preprocessed_panel_split_vcf_gz_tbi,
+                        chromosomes = chromosomes,
+                        label = "PanGenie",
+                        sample_name = leave_out_sample_name,
+                        docker = docker,
+                        monitoring_script = monitoring_script
+                }
             }
         }
     }
@@ -383,7 +387,7 @@ task CreateLeaveOneOutPanelVCF {
         File input_vcf_gz
         File input_vcf_gz_tbi
         String output_prefix
-        String leave_one_out_sample_name
+        Array[String] leave_out_sample_names
 
         String docker
         File? monitoring_script
@@ -400,28 +404,28 @@ task CreateLeaveOneOutPanelVCF {
             bash ~{monitoring_script} > monitoring.log &
         fi
 
-        bcftools view --no-version ~{input_vcf_gz} -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
+        bcftools view --no-version ~{input_vcf_gz} -s ^~{sep=',' leave_out_sample_names} --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.vcf.gz
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LO.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LO.vcf.gz
 
-        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.LOO.vcf.gz -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.split.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.split.vcf.gz
+        bcftools norm --no-version -m- -N ~{output_prefix}.preprocessed.LO.vcf.gz -Ou | \
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LO.split.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LO.split.vcf.gz
 
-        # we need to drop multiallelics before LOO and trimming, otherwise there may be representation issues in the graph
+        # we need to drop multiallelics before LO and trimming, otherwise there may be representation issues in the graph
         bcftools view --no-version --min-alleles 2 --max-alleles 2  ~{input_vcf_gz} -Ou | \
-            bcftools view --no-version -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
+            bcftools view --no-version -s ^~{sep=',' leave_out_sample_names} --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.bi.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.bi.vcf.gz
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LO.bi.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LO.bi.vcf.gz
 
          bcftools view --no-version --min-alleles 3  ~{input_vcf_gz} -Ou | \
             bcftools norm --no-version -m- -N -Ou | \
-            bcftools view --no-version -s ^~{leave_one_out_sample_name} --trim-alt-alleles -Ou | \
+            bcftools view --no-version -s ^~{sep=',' leave_out_sample_names} --trim-alt-alleles -Ou | \
             bcftools view --no-version --min-alleles 2 -Ou | \
-            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz -- -t AF,AC,AN
-        bcftools index -t ~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz
+            bcftools plugin fill-tags --no-version -Oz -o ~{output_prefix}.preprocessed.LO.multi.split.vcf.gz -- -t AF,AC,AN
+        bcftools index -t ~{output_prefix}.preprocessed.LO.multi.split.vcf.gz
     }
 
     runtime {
@@ -436,14 +440,14 @@ task CreateLeaveOneOutPanelVCF {
 
     output {
         File monitoring_log = "monitoring.log"
-        File leave_one_out_panel_vcf_gz = "~{output_prefix}.preprocessed.LOO.vcf.gz"
-        File leave_one_out_panel_vcf_gz_tbi = "~{output_prefix}.preprocessed.LOO.vcf.gz.tbi"
-        File leave_one_out_panel_split_vcf_gz = "~{output_prefix}.preprocessed.LOO.split.vcf.gz"
-        File leave_one_out_panel_split_vcf_gz_tbi = "~{output_prefix}.preprocessed.LOO.split.vcf.gz.tbi"
-        File leave_one_out_panel_bi_vcf_gz = "~{output_prefix}.preprocessed.LOO.bi.vcf.gz"
-        File leave_one_out_panel_bi_vcf_gz_tbi = "~{output_prefix}.preprocessed.LOO.bi.vcf.gz.tbi"
-        File leave_one_out_panel_multi_split_vcf_gz = "~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz"
-        File leave_one_out_panel_multi_split_vcf_gz_tbi = "~{output_prefix}.preprocessed.LOO.multi.split.vcf.gz.tbi"
+        File leave_out_panel_vcf_gz = "~{output_prefix}.preprocessed.LO.vcf.gz"
+        File leave_out_panel_vcf_gz_tbi = "~{output_prefix}.preprocessed.LO.vcf.gz.tbi"
+        File leave_out_panel_split_vcf_gz = "~{output_prefix}.preprocessed.LO.split.vcf.gz"
+        File leave_out_panel_split_vcf_gz_tbi = "~{output_prefix}.preprocessed.LO.split.vcf.gz.tbi"
+        File leave_out_panel_bi_vcf_gz = "~{output_prefix}.preprocessed.LO.bi.vcf.gz"
+        File leave_out_panel_bi_vcf_gz_tbi = "~{output_prefix}.preprocessed.LO.bi.vcf.gz.tbi"
+        File leave_out_panel_multi_split_vcf_gz = "~{output_prefix}.preprocessed.LO.multi.split.vcf.gz"
+        File leave_out_panel_multi_split_vcf_gz_tbi = "~{output_prefix}.preprocessed.LO.multi.split.vcf.gz.tbi"
     }
 }
 
@@ -499,11 +503,11 @@ task KAGECase {
             -o ~{output_prefix}.kage.bi.vcf
 
         # we need to add split multiallelics to biallelic-only KAGE VCF
-        # create single-sample header from LOO panel w/ split multiallelics
+        # create single-sample header from LO panel w/ split multiallelics
         bcftools view --no-version -h -G ~{panel_multi_split_vcf_gz} | \
             sed 's/##fileformat=VCFv4.2/##fileformat=VCFv4.2\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n##FORMAT=<ID=GL,Number=G,Type=Float,Description="Genotype likelihoods.">/g' | \
             sed 's/INFO$/INFO\tFORMAT\t~{sample_name}/g' > ~{output_prefix}.multi.split.header.txt
-        # create single-sample missing genotypes from LOO panel w/ split multiallelics
+        # create single-sample missing genotypes from LO panel w/ split multiallelics
         bcftools view --no-version -H -G ~{panel_multi_split_vcf_gz} | \
             sed 's/$/\tGT:GL\t.\/.:nan,nan,nan/g' > ~{output_prefix}.multi.split.GT.txt
         # create single-sample VCF w/ split multiallelics
