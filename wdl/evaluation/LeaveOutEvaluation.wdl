@@ -732,7 +732,7 @@ task CalculateMetrics {
                            ['[1,50)', (1 <= altlen_v) & (altlen_v < 50)],
                            ['[50,500)', (50 <= altlen_v) & (altlen_v < 500)],
                            ['[500,5000)', (500 <= altlen_v) & (altlen_v < 5000)],
-                           ['[5000,inf)', 10000 <= altlen_v]]
+                           ['[5000,inf)', 5000 <= altlen_v]]
             is_sv_v = (altlen_v <= -50) | (altlen_v >= 50)
             num_i = len(is_altfreq_v)
             num_j = len(is_altlen_v)
