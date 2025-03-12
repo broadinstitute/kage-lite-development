@@ -11,6 +11,8 @@ from .mutable_graph import MutableGraph
 from .nplist import NpList
 from .util import encode_chromosome
 
+import sys
+sys.setrecursionlimit(20000)
 
 class VariantNotFoundException(Exception):
     pass
