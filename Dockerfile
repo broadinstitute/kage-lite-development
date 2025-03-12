@@ -4,6 +4,8 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential \
+    tabix \
+    bcftools \
     autoconf \
     zlib1g-dev \
     libncurses-dev \
@@ -23,18 +25,6 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.19.2/samtools-
     cd samtools-1.19.2 && \
     autoheader && \
     autoconf -Wno-syntax && \
-    ./configure && \
-    make && \
-    make install
-
-RUN mkdir /bcftools
-WORKDIR /bcftools
-RUN wget https://github.com/samtools/bcftools/releases/download/1.21/bcftools-1.21.tar.bz2 && \
-    bzip2 -d bcftools-1.21.tar.bz2 && \
-    tar -xvf bcftools-1.21.tar && \
-    cd bcftools-1.21 && \
-    autoheader && \
-    autoconf && \
     ./configure && \
     make && \
     make install
