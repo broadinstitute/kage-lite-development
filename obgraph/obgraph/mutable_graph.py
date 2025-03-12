@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+import sys
+sys.setrecursionlimit(20000)
 
 class MutableGraph:
     def __init__(self, nodes=None, node_sequences=None, edges=None, linear_ref_nodes=None, node_to_ref_offset=None, ref_offset_to_node=None, chromosome_start_nodes=None, allele_frequencies=None):
