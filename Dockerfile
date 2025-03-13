@@ -15,18 +15,6 @@ RUN apt-get update && \
     apt-get -y autoclean && \
     apt-get -y autoremove
 
-RUN mkdir /samtools
-WORKDIR /samtools
-RUN wget https://github.com/samtools/samtools/releases/download/1.19.2/samtools-1.19.2.tar.bz2 && \
-    bzip2 -d samtools-1.19.2.tar.bz2 && \
-    tar -xvf samtools-1.19.2.tar && \
-    cd samtools-1.19.2 && \
-    autoheader && \
-    autoconf -Wno-syntax && \
-    ./configure && \
-    make && \
-    make install
-
 RUN mkdir /bcftools
 WORKDIR /bcftools
 RUN wget https://github.com/samtools/bcftools/releases/download/1.21/bcftools-1.21.tar.bz2 && \
@@ -35,6 +23,24 @@ RUN wget https://github.com/samtools/bcftools/releases/download/1.21/bcftools-1.
     cd bcftools-1.21 && \
     autoheader && \
     autoconf && \
+    ./configure && \
+    make && \
+    make install && \
+    cd htslib-1.21 && \
+    autoheader && \
+    autoconf && \
+    ./configure && \
+    make && \
+    make install
+
+RUN mkdir /samtools
+WORKDIR /samtools
+RUN wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2 && \
+    bzip2 -d samtools-1.21.tar.bz2 && \
+    tar -xvf samtools-1.21.tar && \
+    cd samtools-1.21 && \
+    autoheader && \
+    autoconf -Wno-syntax && \
     ./configure && \
     make && \
     make install
