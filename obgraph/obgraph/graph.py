@@ -371,7 +371,7 @@ class Graph:
             if len([n for n in possible_snp_node if self.get_node_size(n) > 0]) != 1:
                 logging.error("There should only be one non-empty SNP node")
                 logging.info("Found nodes: %s" % (possible_snp_node))
-                logging.info("prev node is %s, variant bases is %s" % (prev_node, variant_bases))
+                logging.info("prev node is %s, reference bases is %s, variant bases is %s, next ref pos is %s" % (prev_node, reference_bases, variant_bases, next_ref_pos))
                 raise Exception("error")
 
             potential_next = possible_snp_node[-1]  # Get last node, this will be the snp node if there are more nodes
