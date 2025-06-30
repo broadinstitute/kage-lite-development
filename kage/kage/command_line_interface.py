@@ -2,6 +2,7 @@ import logging
 import sys
 
 from .util import vcf_pl_and_gl_header_lines, convert_string_genotypes_to_numeric_array, _write_genotype_debug_data
+from kage.genotyping.combination_model_genotyper import downscale_coverage
 
 logging.basicConfig(
     stream=sys.stderr,
@@ -55,6 +56,11 @@ def genotype(args):
         for i, count_model in enumerate(index.count_model):
             index.count_model[i].limit_to_n_individuals(args.limit_model_counts)
 
+    base = 30
+    if args.average_coverage > base:
+        logging.info("Downscaling coverage by %.3f / %d" % (args.average_coverage, base))
+        node_counts = downscale_coverage(config, node_counts, base)
+        logging.info("Set average coverage to base = %d" % (config.avg_coverage))
 
     genotyper = CombinationModelGenotyper(0, max_variant_id, node_counts, index, config=config)
     genotypes, probs, count_probs = genotyper.genotype()
