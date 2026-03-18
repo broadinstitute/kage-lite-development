@@ -11,12 +11,12 @@ from .util import encode_chromosome
 def get_variant_type(vcf_line):
 
     l = vcf_line.split()
-    if len(l[3]) == len(l[4]):
-        return "SNP"
-    elif "VT=SNP" in vcf_line:
+    if "VT=SNP" in vcf_line:
         return "SNP"
     elif len(l[3]) > 1 and len(l[4]) > 1:
         return "SUBSTITUTION"
+    elif len(l[3]) == len(l[4]):
+        return "SNP"
     elif len(l[3]) > len(l[4]) and len(l[4]) == 1:
         return "DELETION"
     elif len(l[3]) < len(l[4]) and len(l[3]) == 1:
